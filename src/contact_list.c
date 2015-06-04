@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#include <netdb.h>
+#include <arpa/inet.h>
+
 ContactNode *contactNodeCreate( int pSocket, const char *pName )
 {
     ContactNode *newNode = (ContactNode *) malloc( sizeof(ContactNode) );
@@ -19,6 +25,23 @@ void contactNodeDestroy( ContactNode *node )
     close( node->socket );
     free( node->name );
     free( node );
+}
+
+int contactNodePrint( ContactNode *node )
+{
+    socklen_t len;
+    struct sockaddr_in addr;
+    char ipstr[INET_ADDRSTRLEN];
+    
+    if ( getpeername( node->socket, (struct sockaddr *)&addr, &len ) != 0 )
+    {
+        perror( "Erro ao adquirir endereço" );
+        return errno;
+    }
+    
+    inet_ntop( AF_INET, &addr->sin_addr, ipstr, sizeof( ipstr ) );
+    
+    printf( "Nome: %s\nIP: %s\n", node->name, ipstr );
 }
 
 ContactList *contactListCreate()

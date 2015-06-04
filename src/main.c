@@ -17,7 +17,6 @@
 #include <contact_list.h>
 
 void menu(){}
-void listContact(){}
 void deleteContact(){}
 void sendMessage(){}
 void broadcastMessage(){}
@@ -26,7 +25,6 @@ void exitMenu(){}
 
 int addContact( ContactList *list, fd_set *set )
 {
-    
     int errornum, socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
     char buffer[81];
     struct sockaddr_in sa;
@@ -72,20 +70,42 @@ int addContact( ContactList *list, fd_set *set )
     // TODO: Suspender thread de select para evitar condição de disputa em set.
     FD_SET( socketDescriptor, set );
     // TODO: Reiniciar thread de select.
-    ContactListInsert( list, ContactNodeCreate( socketDescriptor, buffer ) );
+    contactListInsert( list, ContactNodeCreate( socketDescriptor, buffer ) );
 }
+
+
+void listContact( ContactList *list )
+{
+    contactNode *current = list->first;
+    int i = 1;
+
+    while ( current != NULL )
+    {
+        printf( "Contato %d\n", i );
+        contactNodePrint( current );
+        current = current->next;
+        ++i;
+    }
+}
+
+enum threadNames 
+{
+    THREAD_LISTENER,
+    THREAD_ACCEPTER,
+    THREAD_SELECTER,
+    THREAD_NUM
+};
+
+int threadID[THREADNUM]; // Para cancelamento de threads, se necessário.
 
 int main()
 {
     //Declaração das threads principais
-    pthread_t listener;
-    pthread_t accepter;
-    pthread_t selecter; 
+    pthread_t threads[THREAD_NUM];
 
     //Assim existam conexões para serem monitoradas
-    pthread_create( &listener, NULL, /*LISTEN()*/, NULL);
-    pthread_create( &accepter, NULL, /*ACCEPT()*/, NULL);
-    
-    
+    threadID[THREAD_LISTENER] = pthread_create( &threads[THREAD_LISTENER], NULL, /*LISTEN()*/, NULL);
+    threadID[THREAD_ACCEPTER] = pthread_create( &threadID[THREAD_ACCEPTER], NULL, /*ACCEPT()*/, NULL);
+    threadID[THREAD_SELECTER] = pthread_create( &threadID[THREAD_SELECTER], NULL, /*SELECT()*/, NULL);
     
 }
