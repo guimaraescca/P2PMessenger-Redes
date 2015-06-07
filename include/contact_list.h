@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 typedef struct contactNode
 {
     char *name;
@@ -16,6 +18,8 @@ typedef struct contactList
 ContactNode *contactNodeCreate( int pSocket, const char *pName );
 
 void contactNodeDestroy( ContactNode *node );
+
+int contactNodePrint( ContactNode *node );
 
 ContactList *contactListCreate();
 

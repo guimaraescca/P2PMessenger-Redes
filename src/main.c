@@ -1,7 +1,9 @@
 #include <errno.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -18,7 +20,7 @@
 #define SERVER_PORT 28086
 
 // Definição de globais INICIO
-enum threadNames 
+enum threadNames
 {
     THREAD_LISTENER,
     THREAD_ACCEPTER,
@@ -48,7 +50,7 @@ int addContact()
     struct sockaddr_in sa;
 
     sa.sin_family = AF_INET;
-    
+
     printf( "Digite o endereço IP\t:" );
     scanf( "%15s", buffer );
 
@@ -67,7 +69,7 @@ int addContact()
     }
 
     int notUsed = 0;
-    do 
+    do
     {
         printf( "Digite um nome para o contato:\t" );
         scanf( "%80s", buffer );
@@ -76,7 +78,7 @@ int addContact()
             printf( "Nome já utilizado!\n");
         else
             notUsed = 1;
-    } while ( notUsed == 0 ) // Enquanto o nome fornecido já tiver sido utilizado.
+    } while ( notUsed == 0 ); // Enquanto o nome fornecido já tiver sido utilizado.
 
     // Estabelecimento de conexão.
     if ( connect( socketDescriptor, (struct sockaddr *)&sa, sizeof( sa ) ) == -1 )
@@ -87,18 +89,20 @@ int addContact()
 
     // Atualizar conjunto de sockets.
     pthread_rwlock_wrlock( &socketSetSync );
-    FD_SET( socketDescriptor, socketSet );
+    FD_SET( socketDescriptor, &socketSet );
     pthread_rwlock_unlock( &socketSetSync );
 
     contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
-    
-    printf( "Contato adicionado com sucesso.\n" )
+
+    printf( "Contato adicionado com sucesso.\n" );
+
+    return -1;
 }
 
 void deleteContact()
 {
     char buffer[81];
-    
+
     printf( "Digite o nome do contato:\t" );
     scanf( "%80s", buffer );
 
@@ -109,7 +113,7 @@ void deleteContact()
     else
     {
         pthread_rwlock_wrlock( &socketSetSync );
-        FD_CLR( deleted->socket, socketSet );
+        FD_CLR( deleted->socket, &socketSet );
         pthread_rwlock_unlock( &socketSetSync );
 
         contactListRemove( contacts, deleted );
@@ -121,7 +125,7 @@ void listContact()
 {
     pthread_rwlock_wrlock( &socketSetSync );
 
-    contactNode *current = contacts->first;
+    ContactNode *current = contacts->first;
     int i = 1;
 
     while ( current != NULL )
@@ -146,7 +150,7 @@ void *selecter( void *p )
         timeout.tv_usec = 0;
 
         pthread_rwlock_rdlock( &socketSetSync );
-        result = select( FD_SETSIZE, socketSet, NULL, NULL, &timeout );
+        result = select( FD_SETSIZE, &socketSet, NULL, NULL, &timeout );
         pthread_rwlock_unlock( &socketSetSync );
 
         if ( result > 0 ) // Se algum socket recebeu dados.
@@ -179,20 +183,20 @@ int main()
     }
 
     // Inicialização da lista de contatos.
-    if ( ( contacts = ContactListCreate() ) == NULL )
+    if ( ( contacts = contactListCreate() ) == NULL )
     {
-        fprintf( stderr, "Erro ao criar lista de contatos.\n" )
+        fprintf( stderr, "Erro ao criar lista de contatos.\n" );
         return -1;
     }
 
     // Inicialização das threads.
     threadID[THREAD_LISTENER] = pthread_create( &threads[THREAD_LISTENER], NULL, /*LISTEN()*/, NULL);
     threadID[THREAD_ACCEPTER] = pthread_create( &threadID[THREAD_ACCEPTER], NULL, /*ACCEPT()*/, NULL);
-    threadID[THREAD_SELECTER] = pthread_create( &threadID[THREAD_SELECTER], NULL, selecter, NULL);
+    threadID[THREAD_SELECTER] = pthread_create( &threads[THREAD_SELECTER], NULL, selecter, NULL);
 
     // Destruição das estruturas alocadas.
     if ( contacts != NULL )
-        ContactListDestroy( contacts );
+        contactListDestroy( contacts );
 
     if ( pthread_rwlock_destroy( &socketSetSync ) != 0 )
     {

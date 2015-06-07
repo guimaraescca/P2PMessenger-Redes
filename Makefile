@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Og -pipe -Wall -g
 
 INCLUDE = -Iinclude/ -I/usr/include/
-LIBS =
+LIBS = -lpthread
 
 CL = $(wildcard src/*.c)    #cpp list
 HL = $(wildcard include/*.h)    #header list

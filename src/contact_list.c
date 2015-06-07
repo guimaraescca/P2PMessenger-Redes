@@ -1,5 +1,7 @@
 #include <contact_list.h>
 
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,8 +12,6 @@
 #include <arpa/inet.h>
 
 #include <unistd.h>
-
-#include <pthread.h>
 
 ContactNode *contactNodeCreate( int pSocket, const char *pName )
 {
@@ -36,16 +36,18 @@ int contactNodePrint( ContactNode *node )
     socklen_t len;
     struct sockaddr_in addr;
     char ipstr[INET_ADDRSTRLEN];
-    
+
     if ( getpeername( node->socket, (struct sockaddr *)&addr, &len ) != 0 )
     {
         perror( "Erro ao adquirir endereço" );
         return errno;
     }
-    
-    inet_ntop( AF_INET, &addr->sin_addr, ipstr, sizeof( ipstr ) );
-    
+
+    inet_ntop( AF_INET, &addr.sin_addr, ipstr, sizeof( ipstr ) );
+
     printf( "Nome: %s\nIP: %s\n", node->name, ipstr );
+
+    return -1;
 }
 
 ContactList *contactListCreate()
@@ -79,7 +81,7 @@ void contactListInsert( ContactList *list, ContactNode *node )
 {
     pthread_rwlock_wrlock( &list->sync );
 
-    if ( list->first != NULL ) 
+    if ( list->first != NULL )
     {
         node->next = list->first;
         list->first->prev = node;
@@ -95,7 +97,7 @@ void contactListRemove( ContactList *list, ContactNode *node )
 
     if ( list->first == node )
         list->first = NULL;
-    else 
+    else
     {
         if ( node->next != NULL )
             node->next->prev = node->prev;
@@ -117,7 +119,7 @@ ContactNode *contactListSearch( ContactList *list, const char *key )
 
     pthread_rwlock_unlock( &list->sync );
 
-    /* TODO: A partir desse ponto o endereço apontado por current pode ser 
+    /* TODO: A partir desse ponto o endereço apontado por current pode ser
         alterado por outra thread. Escolher solução:
         1 - Após contactListSearch ser usada, o usuário deve explicitamente
         destravar a trava. (Eu acho a melhor)
