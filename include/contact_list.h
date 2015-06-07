@@ -10,6 +10,7 @@ typedef struct contactNode
 typedef struct contactList
 {
     ContactNode *first;
+    pthread_rwlock_t sync;
 } ContactList;
 
 ContactNode *contactNodeCreate( int pSocket, const char *pName );
