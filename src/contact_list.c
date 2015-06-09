@@ -59,6 +59,7 @@ ContactList *contactListCreate()
         return NULL;
     }
     newList->first = NULL;
+    // newList->size = 0;
 
     return newList;
 }
@@ -87,6 +88,7 @@ void contactListInsert( ContactList *list, ContactNode *node )
         list->first->prev = node;
     }
     list->first = node;
+    // list->size++;
 
     pthread_rwlock_unlock( &list->sync );
 }
@@ -104,6 +106,7 @@ void contactListRemove( ContactList *list, ContactNode *node )
         node->prev->next = node->next;
     }
     contactNodeDestroy( node );
+    // list->size--;
 
     pthread_rwlock_unlock( &list->sync );
 }
@@ -116,20 +119,6 @@ ContactNode *contactListSearch( ContactList *list, const char *key )
 
     while ( current != NULL && (strcmp( key, current->name ) != 0) )
         current = current->next;
-
-    pthread_rwlock_unlock( &list->sync );
-
-    /* TODO: A partir desse ponto o endereço apontado por current pode ser
-        alterado por outra thread. Escolher solução:
-        1 - Após contactListSearch ser usada, o usuário deve explicitamente
-        destravar a trava. (Eu acho a melhor)
-        2 - Associar a cada nó uma trava de leitura-escrita.
-        3 - Manter como está, só daria conflito se o nó for deletado ao mesmo
-        tempo que outra thread tentar usá-lo, como a exclusão e o envio de
-        mensagens são as únicas funcionalidades que deletam nós, é "só" garantir
-        que elas não vão ocorrer em paralelo a outras que acessam valores nos
-        nós.
-    */
 
     return current;
 }

@@ -3,6 +3,7 @@
 typedef struct contactNode
 {
     char *name;
+    // int size;
     int socket;
 
     struct contactNode *next;
