@@ -20,6 +20,8 @@ ContactNode *contactNodeCreate( int pSocket, const char *pName )
     strcpy( newNode->name, pName );
     newNode->next = NULL;
     newNode->prev = NULL;
+    newNode->id = idSeed;
+    idSeed++;
 
     return newNode;
 }
@@ -45,7 +47,7 @@ int contactNodePrint( ContactNode *node )
 
     inet_ntop( AF_INET, &addr.sin_addr, ipstr, sizeof( ipstr ) );
 
-    printf( "Nome: %s\nIP: %s\n", node->name, ipstr );
+    printf( "ID: %d\nNome: %s\nIP: %s\n", node->id, node->name, ipstr );
 
     return -1;
 }
@@ -59,7 +61,7 @@ ContactList *contactListCreate()
         return NULL;
     }
     newList->first = NULL;
-    // newList->size = 0;
+    newList->size = 0;
 
     return newList;
 }
@@ -88,7 +90,7 @@ void contactListInsert( ContactList *list, ContactNode *node )
         list->first->prev = node;
     }
     list->first = node;
-    // list->size++;
+    list->size++;
 
     pthread_rwlock_unlock( &list->sync );
 }
@@ -106,7 +108,7 @@ void contactListRemove( ContactList *list, ContactNode *node )
         node->prev->next = node->next;
     }
     contactNodeDestroy( node );
-    // list->size--;
+    list->size--;
 
     pthread_rwlock_unlock( &list->sync );
 }
@@ -118,6 +120,18 @@ ContactNode *contactListSearch( ContactList *list, const char *key )
     ContactNode *current = list->first;
 
     while ( current != NULL && (strcmp( key, current->name ) != 0) )
+        current = current->next;
+
+    return current;
+}
+
+ContactNode *contactListSearchId( ContactList *list, int key )
+{
+    pthread_rwlock_rdlock( &list->sync );
+
+    ContactNode *current = list->first;
+
+    while ( (current != NULL) && ( current->id != key) )
         current = current->next;
 
     return current;

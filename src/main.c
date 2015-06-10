@@ -41,60 +41,14 @@ fd_set socketSet; // Deve ser inicializado.
 void pendingAlerts(){}
 void exitMenu(){}
 
+//=================== ALERT MENU ===============================================
 //Impressão de avisos de confirmação de envio ou erros.
 void alertMenu(const char* alert){
     system("clear");
-    printf("\n%s \n\n");
+    printf("\n%s \n\n", alert);
 }
 
-void menu(){
-    
-    int input;
-
-    do{
-        printf("Menu\n\n");
-    
-        printf("1 - Adicionar contato.\n");
-        printf("2 - Listar contatos.\n");
-        printf("3 - Deletar contato.\n");
-        printf("4 - Enviar mensagem.\n");
-        printf("5 - Enviar mensagem em grupo.\n");
-        printf("6 - Alertas pendentes.\n");
-        printf("0 - Fechar programa.\n\n");
-    
-        printf("~$ ");
-        scanf("%d", &input);
-    
-        switch(input) {
-          	case 1:
-        	    addContact();
-      		    break;
-      	    case 2:
-        		listContact();
-        		break;
-          	case 3:
-        		deleteContact();
-        		break;
-            case 4:
-                sendMessage();
-      		    break;
-            case 5:
-                broadcastMessage();
-      		    break;
-            case 6:
-      		    break;
-            case 0:
-                break;
-       	    default:
-                alertMenu("Opção inválida! Tente novamente.");
-        	    break;  	 	
-      	}
-
-    }while(input != 0);
-    
-    return;
-}
-
+//=================== ADD CONTACT ==============================================
 int addContact()
 {
     int errornum, socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
@@ -146,17 +100,17 @@ int addContact()
 
     contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
 
-    //printf( "Contato adicionado com sucesso.\n" );
     alertMenu("Contato adicionado com sucesso.");
     
     return -1;
 }
 
+//=================== DELETE CONTACT ===========================================
 void deleteContact()
 {
     char buffer[81];
 
-    printf( "Digite o nome do contato:\t" );
+    printf( "Digite o nome do contato, não utilize espaços e máximo de 80 caracteres:\n" );
     scanf( "%80s", buffer );
 
     ContactNode *deleted = contactListSearch( contacts, buffer );
@@ -177,6 +131,7 @@ void deleteContact()
     }
 }
 
+//=================== LIST CONTACTS ============================================
 void listContact()
 {
     pthread_rwlock_rdlock( &contacts->sync );
@@ -197,20 +152,21 @@ void listContact()
     alertMenu(" ");
 }
 
+//=================== SEND MESSAGE =============================================
 void sendMessage(){
     
     int sendResult;
     char buffer[81];
     char* message;  //TODO: Trocar por const char* ?
     ContactNode* receiver;
-    
+
     printf("Digite o nome do contato:\t");
     scanf("%80s", buffer);
-    
+
     receiver = contactListSearch(contacts, buffer);
-    
+
     if ( receiver == NULL ){
-        pthread_rwlock_rdlock( &list->sync );
+        pthread_rwlock_rdlock( &contacts->sync );
         alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
     }else{
         printf("Mensagem: ");
@@ -218,43 +174,159 @@ void sendMessage(){
         
         sendResult = send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
         
-        pthread_rwlock_unlock( &list->sync );
+        pthread_rwlock_unlock( &contacts->sync );
 
         if(sendResult == -1){
             //TODO: Tratar 'errno' talvez
             alertMenu("Falha no envio!");
         }else{
-            alertMenu("Mensagem enviada para %s!", receiver->name);
+            alertMenu("Mensagem enviada!");
         }
     }
 }
 
+//=================== BROADCAST MESSAGE ========================================
 void broadcastMessage(){
     
-    int i;
-    char* message;
+    int receiverId;
+    char message[messageSize];
+    char buffer[4*contacts->size];
+    char* token;
     ContactNode *receiver;
     
+    printf("Envio de mensagem brodcast.\n");
     printf("Mensagem broadcast: ");
     fgets(message, messageSize, stdin);
-        
-    //TODO: Adquirir trava da lista para percorrer e enviar as mensagens?
-    //for( i=0; i< contactListSize; i++ ){
-        receiver = contactListAt(i);
-        send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
-    //}
     
-    pthread_rwlock_rdlock( &list->sync );
+    printf("Insira os IDs dos contatos para quem deseja enviar a mensagem seguidos de <ENTER>.\n\n");
+    
+    //Exibiçao dos IDs da lista
+    pthread_rwlock_rdlock( &contacts->sync );
+
+    ContactNode *current = contacts->first;
+    while ( current != NULL )
+    {
+        contactNodePrint( current );
+        current = current->next;
+    }
+
+    pthread_rwlock_unlock( &contacts->sync );
+
+    
+    printf("\nEx: 105 201 110 <ENTER>\n");
+    fgets(buffer, (4*contacts->size), stdin );
+
+    //Aquisição do primeiro ID dentro do buffer
+    token = strtok (buffer," ");
+    receiverId = atoi(token);
+
+    while (token != NULL){
+        //Pesquisa do ID dentro da lista e envio da mensagem.
+        receiver = contactListSearchId(receiverId);
+        send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
+        pthread_rwlock_unlock( &contacts->sync ); //Para cada pesquisa feita é precisa liberar a trava adquirida.
+        
+        //Aquisisão do próximo ID no buffer. 
+        token = strtok (NULL, " ");
+        receiverId = atoi(token);
+    }
     alertMenu("Mensagem broadcast enviada!");
 }
 
-// Funções para threads INICIO
+//=================== MAIN MENU ================================================
+void menu(){
+    
+    int input;
+
+    do{
+        printf("Menu\n\n");
+    
+        printf("1 - Adicionar contato.\n");
+        printf("2 - Listar contatos.\n");
+        printf("3 - Deletar contato.\n");
+        printf("4 - Enviar mensagem.\n");
+        printf("5 - Enviar mensagem em grupo.\n");
+        printf("6 - Alertas pendentes.\n");
+        printf("0 - Fechar programa.\n\n");
+    
+        printf("~$ ");
+        scanf("%d", &input);
+    
+        switch(input) {
+          	case 1:
+        	    addContact();
+      		    break;
+      	    case 2:
+        		listContact();
+        		break;
+          	case 3:
+        		deleteContact();
+        		break;
+            case 4:
+                sendMessage();
+      		    break;
+            case 5:
+                broadcastMessage();
+      		    break;
+            case 6:
+      		    break;
+            case 0:
+                break;
+       	    default:
+                alertMenu("Opção inválida! Tente novamente.");
+        	    break;  	 	
+      	}
+    }while(input != 0);
+    
+    return;
+}
+
+//==============================================================================
+//=================== THREADS FUNCTIONS ========================================
+//==============================================================================
+
+//=================== READING THREAD ===========================================
+void *reader( void *p )
+{
+    const ContactNode *node = (ContactNode *)p;
+
+    size_t size, bufferSize;
+    ssize_t partial, total = 0;
+
+    while ( total < sizeof( ssize_t ) )
+    {
+        partial = recv( node->socket, (void *)(&size + total), sizeof( ssize_t ) - total, 0 );
+        if ( partial == -1 )
+        {
+            perror( "Erro na leitura do socket" );
+            return errno;
+        }
+        total += partial;
+    }
+    char buffer[size];
+    
+    bufferSize = size * sizeof( char );
+    total = 0;
+    while ( total < size )
+    {
+        partial = recv( node->socket, (void *)(buffer + total), bufferSize - total, 0 );
+        if ( partial == -1 )
+        {
+            perror( "Erro na leitura do socket" );
+            return errno;
+        }
+        total += partial;
+    }
+    // TODO: Definir como e quando o usuário lerá as mensagens - Arquivos?
+}
+
+//=================== SELECTER THREAD ==========================================
 void *selecter( void *p )
 {
     struct timeval timeout;
     int result;
 
-    while ( 1 )
+    do
     {
         timeout.tv_sec = 2; // Timeout a cada 2 segundos, para que o conjunto de sockets possa ser atualizado.
         timeout.tv_usec = 0;
@@ -274,7 +346,7 @@ void *selecter( void *p )
             {
                 if ( FD_ISSET( curent->socket, &socketSet != 0 ) )
                 {
-                    // TODO: ID[i] = pthread_create( &threads[i], NULL, receiver, NULL);
+                    // TODO: ID[i] = pthread_create( &threads[i], NULL, receiver, (void *)current);
                     --i;
                 }
                 current = current->next;
@@ -298,9 +370,51 @@ void *selecter( void *p )
             pthread_rwlock_unlock( &contacts->sync );
             pthread_rwlock_unlock( &socketSetSync );
         }
-    }
+    } while(1);
 }
-// Funções para threads FIM
+
+//==============================================================================
+//=================== SERVER MANIPULATION ======================================
+//==============================================================================
+
+int createServer(  )
+{   //TODO: ajustar bind
+    int socketDescriptor;
+
+    // Abertura do socket.
+    socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
+    if ( socketDescriptor == -1 )
+    {
+        perror( "Erro ao abrir socket" );
+        return errno;
+    }
+
+    // Associação do socket a uma porta.
+    struct sockaddr_in this_machine;
+
+    this_machine.sin_family = AF_INET;  // IPv4.
+    this_machine.sin_port = htons( port );
+    this_machine.sin_addr.s_addr = htonl( INADDR_ANY ); // IP da máquina.
+
+    if ( bind( socketDescriptor, (struct sockaddr *)&this_machine, sizeof( this_machine ) ) == -1 )
+    {
+        perror( "Erro ao realizar bind no socket" );
+        return errno;
+    }
+
+    // Criar fila de solicitações de conexão.
+    if ( listen( socketDescriptor, 50 ) == -1 )
+    {
+        perror( "Erro em listen" );
+        return errno;
+    }
+    
+    // TODO: Chamar thread accepter.
+}
+
+//==============================================================================
+//=================== MAIN =====================================================
+//==============================================================================
 
 int main()
 {

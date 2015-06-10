@@ -1,11 +1,13 @@
 #include <pthread.h>
 
+int idSeed = 100; //Base para gerar os IDs dos contatos.
+
 typedef struct contactNode
 {
     char *name;
-    // int size;
     int socket;
-
+    int id;
+    
     struct contactNode *next;
     struct contactNode *prev;
 } ContactNode;
@@ -13,6 +15,7 @@ typedef struct contactNode
 typedef struct contactList
 {
     ContactNode *first;
+    int size;
     pthread_rwlock_t sync;
 } ContactList;
 
