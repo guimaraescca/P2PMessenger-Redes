@@ -1,285 +1,24 @@
 #include <errno.h>
 #include <locale.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h> // Para usar select e fd_set.
 
 #include <unistd.h> // Contém função close.
-#include <sys/select.h> // Para usar select e fd_set.
 
 #include <netdb.h>
 #include <arpa/inet.h> // Conversões para formato de rede.
 
-#include <pthread.h>
-
+#include <generic_deque.h>
 #include <contact_list.h>
+#include <global.h>
 
-#define SERVER_PORT 28086
-#define messageSize 2000
-
-// Definição de globais INICIO
-enum threadNames
-{
-    THREAD_LISTENER,
-    THREAD_ACCEPTER,
-    THREAD_SELECTER,
-    THREAD_NUM
-};
-
-int threadID[THREAD_NUM];
-
-ContactList *contacts = NULL;
-
-pthread_rwlock_t socketSetSync;
-fd_set socketSet; // Deve ser inicializado.
-
-// Definição de globais FIM
-
-void pendingAlerts(){}
-void exitMenu(){}
-
-//=================== ALERT MENU ===============================================
-//Impressão de avisos de confirmação de envio ou erros.
-void alertMenu(const char* alert){
-    system("clear");
-    printf("\n%s \n\n", alert);
-}
-
-//=================== ADD CONTACT ==============================================
-int addContact()
-{
-    int errornum, socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
-    char buffer[81];
-    struct sockaddr_in sa;
-
-    sa.sin_family = AF_INET;
-
-    printf( "Digite o endereço IP\t:" );
-    scanf( "%15s", buffer );
-
-    // Conversão da string em endereço IP.
-    if ( (errornum = inet_pton( sa.sin_family, buffer, &sa.sin_addr )) < 1 )
-    {
-        fprintf( stderr, "Erro ao converter string para endereço: %d\n", errornum );
-        return errornum;
-    }
-
-    // Seleção da porta.
-    if ( (errornum = (sa.sin_port = htons( SERVER_PORT ))) < 1 )
-    {
-        fprintf( stderr, "Erro ao converter inteiro para porta: %d\n", errornum );
-        return errornum;
-    }
-
-    int notUsed = 0;
-    do
-    {
-        printf( "Digite um nome para o contato:\t" );
-        scanf( "%80s", buffer );
-
-        if ( contactListSearch( contacts, buffer ) != NULL ){
-            printf( "Nome já utilizado!\n");
-        }else
-            notUsed = 1;
-    } while ( notUsed == 0 ); // Enquanto o nome fornecido já tiver sido utilizado.
-
-    // Estabelecimento de conexão.
-    if ( connect( socketDescriptor, (struct sockaddr *)&sa, sizeof( sa ) ) == -1 )
-    {
-        perror( "Erro ao estabelecer conexão" );
-        return errno;
-    }
-
-    // Atualizar conjunto de sockets.
-    pthread_rwlock_wrlock( &socketSetSync );
-    FD_SET( socketDescriptor, &socketSet );
-    pthread_rwlock_unlock( &socketSetSync );
-
-    contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
-
-    alertMenu("Contato adicionado com sucesso.");
-    
-    return -1;
-}
-
-//=================== DELETE CONTACT ===========================================
-void deleteContact()
-{
-    char buffer[81];
-
-    printf( "Digite o nome do contato, não utilize espaços e máximo de 80 caracteres:\n" );
-    scanf( "%80s", buffer );
-
-    ContactNode *deleted = contactListSearch( contacts, buffer );
-
-    // TODO: contactListSearch e Remove deadlock.
-
-    if ( deleted == NULL ){
-        alertMenu("Não há contato com esse nome na sua lista de contatos.");
-    }else
-    {
-        pthread_rwlock_wrlock( &socketSetSync );
-        FD_CLR( deleted->socket, &socketSet );
-        pthread_rwlock_unlock( &socketSetSync );
-
-        pthread_rwlock_unlock( &contacts->sync );
-        contactListRemove( contacts, deleted );
-        alertMenu("Contato removido com sucesso.");    
-    }
-}
-
-//=================== LIST CONTACTS ============================================
-void listContact()
-{
-    pthread_rwlock_rdlock( &contacts->sync );
-
-    ContactNode *current = contacts->first;
-    int i = 1;
-
-    while ( current != NULL )
-    {
-        printf( "Contato %d\n", i++ );
-        contactNodePrint( current );
-        current = current->next;
-    }
-
-    pthread_rwlock_unlock( &contacts->sync );
-    printf("Pressione ENTER para voltar ao menu principal.\n");
-    getchar();
-    alertMenu(" ");
-}
-
-//=================== SEND MESSAGE =============================================
-void sendMessage(){
-    
-    int sendResult;
-    char buffer[81];
-    char* message;  //TODO: Trocar por const char* ?
-    ContactNode* receiver;
-
-    printf("Digite o nome do contato:\t");
-    scanf("%80s", buffer);
-
-    receiver = contactListSearch(contacts, buffer);
-
-    if ( receiver == NULL ){
-        pthread_rwlock_rdlock( &contacts->sync );
-        alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
-    }else{
-        printf("Mensagem: ");
-        fgets(message, messageSize, stdin);
-        
-        sendResult = send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
-        
-        pthread_rwlock_unlock( &contacts->sync );
-
-        if(sendResult == -1){
-            //TODO: Tratar 'errno' talvez
-            alertMenu("Falha no envio!");
-        }else{
-            alertMenu("Mensagem enviada!");
-        }
-    }
-}
-
-//=================== BROADCAST MESSAGE ========================================
-void broadcastMessage(){
-    
-    int receiverId;
-    char message[messageSize];
-    char buffer[4*contacts->size];
-    char* token;
-    ContactNode *receiver;
-    
-    printf("Envio de mensagem brodcast.\n");
-    printf("Mensagem broadcast: ");
-    fgets(message, messageSize, stdin);
-    
-    printf("Insira os IDs dos contatos para quem deseja enviar a mensagem seguidos de <ENTER>.\n\n");
-    
-    //Exibiçao dos IDs da lista
-    pthread_rwlock_rdlock( &contacts->sync );
-
-    ContactNode *current = contacts->first;
-    while ( current != NULL )
-    {
-        contactNodePrint( current );
-        current = current->next;
-    }
-
-    pthread_rwlock_unlock( &contacts->sync );
-
-    
-    printf("\nEx: 105 201 110 <ENTER>\n");
-    fgets(buffer, (4*contacts->size), stdin );
-
-    //Aquisição do primeiro ID dentro do buffer
-    token = strtok (buffer," ");
-    receiverId = atoi(token);
-
-    while (token != NULL){
-        //Pesquisa do ID dentro da lista e envio da mensagem.
-        receiver = contactListSearchId(receiverId);
-        send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
-        pthread_rwlock_unlock( &contacts->sync ); //Para cada pesquisa feita é precisa liberar a trava adquirida.
-        
-        //Aquisisão do próximo ID no buffer. 
-        token = strtok (NULL, " ");
-        receiverId = atoi(token);
-    }
-    alertMenu("Mensagem broadcast enviada!");
-}
-
-//=================== MAIN MENU ================================================
-void menu(){
-    
-    int input;
-
-    do{
-        printf("Menu\n\n");
-    
-        printf("1 - Adicionar contato.\n");
-        printf("2 - Listar contatos.\n");
-        printf("3 - Deletar contato.\n");
-        printf("4 - Enviar mensagem.\n");
-        printf("5 - Enviar mensagem em grupo.\n");
-        printf("6 - Alertas pendentes.\n");
-        printf("0 - Fechar programa.\n\n");
-    
-        printf("~$ ");
-        scanf("%d", &input);
-    
-        switch(input) {
-          	case 1:
-        	    addContact();
-      		    break;
-      	    case 2:
-        		listContact();
-        		break;
-          	case 3:
-        		deleteContact();
-        		break;
-            case 4:
-                sendMessage();
-      		    break;
-            case 5:
-                broadcastMessage();
-      		    break;
-            case 6:
-      		    break;
-            case 0:
-                break;
-       	    default:
-                alertMenu("Opção inválida! Tente novamente.");
-        	    break;  	 	
-      	}
-    }while(input != 0);
-    
-    return;
-}
+#include <interface.h>
 
 //==============================================================================
 //=================== THREADS FUNCTIONS ========================================
@@ -289,35 +28,33 @@ void menu(){
 void *reader( void *p )
 {
     const ContactNode *node = (ContactNode *)p;
+    ssize_t size, bufferSize, partial, total = 0;
 
-    size_t size, bufferSize;
-    ssize_t partial, total = 0;
-
-    while ( total < sizeof( ssize_t ) )
+    while ( total < sizeof( size ) )
     {
-        partial = recv( node->socket, (void *)(&size + total), sizeof( ssize_t ) - total, 0 );
+        partial = recv( node->socket, (void *)(&size + total), sizeof( size ) - total, 0 );
         if ( partial == -1 )
         {
             perror( "Erro na leitura do socket" );
-            return errno;
+            return -1;
         }
         total += partial;
     }
     char buffer[size];
-    
-    bufferSize = size * sizeof( char );
+    bufferSize = sizeof( char ) * size;
     total = 0;
-    while ( total < size )
+    while ( total < bufferSize )
     {
         partial = recv( node->socket, (void *)(buffer + total), bufferSize - total, 0 );
         if ( partial == -1 )
         {
             perror( "Erro na leitura do socket" );
-            return errno;
+            return -1;
         }
         total += partial;
     }
-    // TODO: Definir como e quando o usuário lerá as mensagens - Arquivos?
+    dequePushBack( node->messages, nodeCreate( buffer, bufferSize ) );
+    dequePushBack( pendingRead, nodeCreate( &node->id, sizeof( node->id ) ) );
 }
 
 //=================== SELECTER THREAD ==========================================
@@ -344,9 +81,9 @@ void *selecter( void *p )
 
             while ( current != NULL )
             {
-                if ( FD_ISSET( curent->socket, &socketSet != 0 ) )
+                if ( FD_ISSET( current->socket, &socketSet ) != 0 )
                 {
-                    // TODO: ID[i] = pthread_create( &threads[i], NULL, receiver, (void *)current);
+                    ID[i] = pthread_create( &threads[i], NULL, reader, (void *)current);
                     --i;
                 }
                 current = current->next;
@@ -356,14 +93,14 @@ void *selecter( void *p )
             pthread_rwlock_unlock( &socketSetSync );
 
             for ( i = 0; i < result; ++i )
-                thread_join( ID[i] );
+                pthread_join( ID[i], NULL );
         }
         else if ( result == -1 )
         {
             perror( "Erro em select" );
             pthread_rwlock_unlock( &contacts->sync );
             pthread_rwlock_unlock( &socketSetSync );
-            return errno;
+            return -1;
         }
         else
         {
@@ -377,39 +114,91 @@ void *selecter( void *p )
 //=================== SERVER MANIPULATION ======================================
 //==============================================================================
 
-int createServer(  )
-{   //TODO: ajustar bind
-    int socketDescriptor;
+void *accepter( void *p )
+{
+    struct clientData
+    {
+        int socket;
+        struct sockaddr_in addr;
+        socklen_t length;
+        char name[81];
+    } c;
+    
+    int clientSocket;
+    // TODO erro na ordem dos sockets.
 
+    while ( 1 )
+    {
+        // Aceita a conexão pendente.
+        if ( (clientSocket = accept( c.socket, (void *)&c.addr, &c.length )) == -1 )
+        {
+            perror( "Erro ao obter socket para o cliente" );
+            return -1;
+        }
+        ssize_t total = 0, partial, nameSize;
+        // Recebe o tamanho do nome do servidor local.
+        while ( total < sizeof( nameSize ) )
+        {
+            partial = recv( c.socket, (void *)&nameSize + total, sizeof( nameSize ) - total, 0 );
+            if ( partial == -1 )
+            {
+                perror( "Erro ao transmitir tamanho do nome local" );
+                return -1;
+            }
+            total += partial;
+        }
+        total = 0;
+        // Recebe o nome local.
+        nameSize *= sizeof( char );
+        while ( total < nameSize )
+        {
+            partial = recv( c.socket, (void *)c.name + total, nameSize - total, 0 );
+            if ( partial == -1 )
+            {
+                perror( "Erro ao transmitir tamanho do nome local" );
+                return -1;
+            }
+            total += partial;
+        }
+        contactListInsert( pendingAccept, contactNodeCreate( c.socket, c.name ) );
+    }
+
+}
+
+int createServer()
+{
+    serverName = (char *) malloc( sizeof(char) * 81 );
+    // Ler nome do usuário local.
+    printf( "Digite um nome de usuário, de até 80 caracteres:\n" );
+    scanf( "%80s", serverName );
+    
     // Abertura do socket.
-    socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
-    if ( socketDescriptor == -1 )
+    serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
+    if ( serverSocket == -1 )
     {
         perror( "Erro ao abrir socket" );
-        return errno;
+        return -1;
     }
 
     // Associação do socket a uma porta.
     struct sockaddr_in this_machine;
 
     this_machine.sin_family = AF_INET;  // IPv4.
-    this_machine.sin_port = htons( port );
+    this_machine.sin_port = htons( SERVER_PORT );
     this_machine.sin_addr.s_addr = htonl( INADDR_ANY ); // IP da máquina.
 
-    if ( bind( socketDescriptor, (struct sockaddr *)&this_machine, sizeof( this_machine ) ) == -1 )
+    if ( bind( serverSocket, (struct sockaddr *)&this_machine, sizeof( this_machine ) ) == -1 )
     {
         perror( "Erro ao realizar bind no socket" );
-        return errno;
+        return -1;
     }
 
     // Criar fila de solicitações de conexão.
-    if ( listen( socketDescriptor, 50 ) == -1 )
+    if ( listen( serverSocket, 50 ) == -1 )
     {
         perror( "Erro em listen" );
-        return errno;
+        return -1;
     }
-    
-    // TODO: Chamar thread accepter.
 }
 
 //==============================================================================
@@ -420,11 +209,10 @@ int main()
 {
     // Definir mensagens na linguagem do sistema.
     setlocale( LC_ALL, "" );
-
-    //Declaração das threads
+    
     pthread_t threads[THREAD_NUM];
 
-    // Inicilização do conjunto de sockets e do mutex para sincronizá-lo.
+    // Inicialização do conjunto de sockets e do mutex para sincronizá-lo.
     FD_ZERO( &socketSet );
     if ( pthread_rwlock_init( &socketSetSync, NULL ) != 0 )
     {
@@ -432,16 +220,31 @@ int main()
         return -1;
     }
 
-    // Inicialização da lista de contatos.
-    if ( ( contacts = contactListCreate() ) == NULL )
+    // Inicialização das listas.
+    contacts = contactListCreate();
+    if ( contacts == NULL )
     {
-        fprintf( stderr, "Erro ao criar lista de contatos.\n" );
+        fprintf( stderr, "Erro ao criar lista de contato.\n" );
+        return -1;
+    }
+    pendingAccept = contactListCreate();
+    if ( pendingAccept == NULL )
+    {
+        fprintf( stderr, "Erro ao criar lista de contatos a adicionar.\n" );
+        return -1;
+    }
+    pendingRead = dequeCreate();
+    if ( pendingRead == NULL )
+    {
+        fprintf( stderr, "Erro ao criar lista de IDs com mensagens não lidas.\n" );
         return -1;
     }
 
+    // Criação do servidor.
+    createServer();
+
     // Inicialização das threads.
-    threadID[THREAD_LISTENER] = pthread_create( &threads[THREAD_LISTENER], NULL, /*LISTEN()*/, NULL);
-    threadID[THREAD_ACCEPTER] = pthread_create( &threads[THREAD_ACCEPTER], NULL, /*ACCEPT()*/, NULL);
+    threadID[THREAD_ACCEPTER] = pthread_create( &threads[THREAD_ACCEPTER], NULL, accepter, NULL);
     threadID[THREAD_SELECTER] = pthread_create( &threads[THREAD_SELECTER], NULL, selecter, NULL);
 
     // Destruição das estruturas alocadas.
