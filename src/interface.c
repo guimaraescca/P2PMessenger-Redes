@@ -335,18 +335,18 @@ void menu(){
         printf("4 - Enviar mensagem.\n");
         printf("5 - Enviar mensagem em grupo.\n");
 
-        pthread_rwlock_rdlock( &pendingAccept );
+        pthread_rwlock_rdlock( &pendingAccept->sync );
         if ( pendingAccept->size > 0 ){
             alerts = 1;
             printf("6 - Adições pendentes.\n");
         }
-        pthread_rwlock_unlock( &pendingAccept );
-        pthread_rwlock_rdlock( &pendingRead );
+        pthread_rwlock_unlock( &pendingAccept->sync );
+        pthread_rwlock_rdlock( &pendingRead->sync );
         if ( pendingRead->size > 0 ) {
             read = 1;
             printf("7 - Ler mensagens.\n");
         }
-        pthread_rwlock_unlock( &pendingRead );
+        pthread_rwlock_unlock( &pendingRead->sync );
 
         printf("0 - Fechar programa.\n\n");
     
