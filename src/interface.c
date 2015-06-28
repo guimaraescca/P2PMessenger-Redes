@@ -31,20 +31,20 @@ int addContact()
 
     sa.sin_family = AF_INET;
 
-    printf( "Digite o endereço IP\t:" );
+    printf( "Digite o endereço IP:\t" );
     scanf( "%15s", buffer );
 
     // Conversão da string em endereço IP.
     if ( (errornum = inet_pton( sa.sin_family, buffer, &sa.sin_addr )) < 1 )
     {
-        fprintf( stderr, "Erro ao converter string para endereço: %d\n", errornum );
+        fprintf( stderr, "Erro ao converter string para endereço: %d\nVerifique se digitou um IP no formato correto.\n", errornum );
         return errornum;
     }
 
     // Seleção da porta.
     if ( (errornum = (sa.sin_port = htons( SERVER_PORT ))) < 1 )
     {
-        fprintf( stderr, "Erro ao converter inteiro para porta: %d\n", errornum );
+        fprintf( stderr, "Erro ao converter inteiro para formato de rede: %d\nVerifique se digitou uma porta válida.\n", errornum );
         return errornum;
     }
 
@@ -325,6 +325,7 @@ void acceptContact() {
 //=================== MAIN MENU ================================================
 void menu(){
     
+    char inputStr[2];
     int input, alerts, read;
 
     do{
@@ -353,6 +354,8 @@ void menu(){
         printf("0 - Fechar programa.\n\n");
     
         printf("~$ ");
+        //fgets(inputStr ,2 ,stdin);
+        //input = strtol(inputStr, NULL, 10);
         scanf("%d", &input);
     
         switch(input) {
