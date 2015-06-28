@@ -116,21 +116,15 @@ void *selecter( void *p )
 
 void *accepter( void *p )
 {
-    struct clientData
-    {
-        int socket;
-        struct sockaddr_in addr;
-        socklen_t length;
-        char name[81];
-    } c;
-    
     int clientSocket;
-    // TODO erro na ordem dos sockets.
+    struct sockaddr_in addr;
+    socklen_t length;
+    char name[81];
 
     while ( 1 )
     {
         // Aceita a conexão pendente.
-        if ( (clientSocket = accept( c.socket, (void *)&c.addr, &c.length )) == -1 )
+        if ( (clientSocket = accept( serverSocket, (void *)&addr, &length )) == -1 )
         {
             perror( "Erro ao obter socket para o cliente" );
             return -1;
@@ -139,7 +133,7 @@ void *accepter( void *p )
         // Recebe o tamanho do nome do servidor local.
         while ( total < sizeof( nameSize ) )
         {
-            partial = recv( c.socket, (void *)&nameSize + total, sizeof( nameSize ) - total, 0 );
+            partial = recv( clientSocket, (void *)&nameSize + total, sizeof( nameSize ) - total, 0 );
             if ( partial == -1 )
             {
                 perror( "Erro ao transmitir tamanho do nome local" );
@@ -152,7 +146,7 @@ void *accepter( void *p )
         nameSize *= sizeof( char );
         while ( total < nameSize )
         {
-            partial = recv( c.socket, (void *)c.name + total, nameSize - total, 0 );
+            partial = recv( clientSocket, (void *)name + total, nameSize - total, 0 );
             if ( partial == -1 )
             {
                 perror( "Erro ao transmitir tamanho do nome local" );
@@ -160,7 +154,7 @@ void *accepter( void *p )
             }
             total += partial;
         }
-        contactListInsert( pendingAccept, contactNodeCreate( c.socket, c.name ) );
+        contactListInsert( pendingAccept, contactNodeCreate( clientSocket, name ) );
     }
 
 }
