@@ -13,6 +13,8 @@
 
 #include <sys/types.h>
 
+#include <unistd.h>
+
 //=================== ALERT MENU ===============================================
 //Impressão de avisos de confirmação de envio ou erros.
 void alertMenu(const char* alert){
@@ -292,11 +294,11 @@ void broadcastMessage(){
 void acceptContact() {
     pthread_rwlock_wrlock( &pendingAccept->sync );
 
-    if ( pendingRead->size > 0 ) {
-        ContactNode *current = contactListPopFront( pendingRead );
+    if ( pendingAccept->size > 0 ) {
+        ContactNode *current = contactListPopFront( pendingAccept );
         char accept;
 
-        printf( "Há %d contatos a serem aceitos.\n", pendingRead->size );
+        printf( "Há %d contatos a serem aceitos.\n", pendingAccept->size );
         while ( current != NULL ) {
             printf( "Nome: %s\nAceitar [s/n]?", current->name );
             scanf( "%c", &accept );
@@ -313,7 +315,7 @@ void acceptContact() {
                 pthread_rwlock_unlock( &contacts->sync );
                 printf( "Contato aceito com sucesso!\n" );
             }
-            current = contactListPopFront( pendingRead );
+            current = contactListPopFront( pendingAccept );
         }
     }
     pthread_rwlock_unlock( &pendingAccept->sync );

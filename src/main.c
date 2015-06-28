@@ -27,7 +27,7 @@
 //=================== READING THREAD ===========================================
 void *reader( void *p )
 {
-    const ContactNode *node = (ContactNode *)p;
+    ContactNode *node = (ContactNode *)p;
     ssize_t size, bufferSize, partial, total = 0;
 
     while ( total < sizeof( size ) )
@@ -36,7 +36,7 @@ void *reader( void *p )
         if ( partial == -1 )
         {
             perror( "Erro na leitura do socket" );
-            return -1;
+            return (void *)-1;
         }
         total += partial;
     }
@@ -49,12 +49,12 @@ void *reader( void *p )
         if ( partial == -1 )
         {
             perror( "Erro na leitura do socket" );
-            return -1;
+            return (void *)-1;
         }
         total += partial;
     }
     dequePushBack( node->messages, nodeCreate( buffer, bufferSize ) );
-    dequePushBack( pendingRead, nodeCreate( &node->id, sizeof( node->id ) ) );
+    dequePushBack( pendingRead, nodeCreate( (void *)&node->id, sizeof( node->id ) ) );
 }
 
 //=================== SELECTER THREAD ==========================================
@@ -100,7 +100,7 @@ void *selecter( void *p )
             perror( "Erro em select" );
             pthread_rwlock_unlock( &contacts->sync );
             pthread_rwlock_unlock( &socketSetSync );
-            return -1;
+            return (void *)-1;
         }
         else
         {
@@ -127,7 +127,7 @@ void *accepter( void *p )
         if ( (clientSocket = accept( serverSocket, (void *)&addr, &length )) == -1 )
         {
             perror( "Erro ao obter socket para o cliente" );
-            return -1;
+            return (void *)-1;
         }
         ssize_t total = 0, partial, nameSize;
         // Recebe o tamanho do nome do servidor local.
@@ -137,7 +137,7 @@ void *accepter( void *p )
             if ( partial == -1 )
             {
                 perror( "Erro ao transmitir tamanho do nome local" );
-                return -1;
+                return (void *)-1;
             }
             total += partial;
         }
@@ -150,7 +150,7 @@ void *accepter( void *p )
             if ( partial == -1 )
             {
                 perror( "Erro ao transmitir tamanho do nome local" );
-                return -1;
+                return (void *)-1;
             }
             total += partial;
         }

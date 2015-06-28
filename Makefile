@@ -1,7 +1,7 @@
 CC = gcc
-CFLAGS = -Og -pipe -g -w
+CFLAGS = -Og -pipe -g
 
-INCLUDE = -Iinclude/ -I/usr/include/
+INCLUDE = -Iinclude/ -isystem/usr/include/
 LIBS = -lpthread
 
 CL = $(wildcard src/*.c)    #cpp list
