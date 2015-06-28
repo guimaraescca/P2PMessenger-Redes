@@ -4,7 +4,7 @@
 #ifndef _CONTACT_LIST_H_
 #define _CONTACT_LIST_H_
 
-int idSeed = 1; //Base para gerar os IDs dos contatos.
+int idSeed; //Base para gerar os IDs dos contatos.
 
 typedef struct contactNode
 {

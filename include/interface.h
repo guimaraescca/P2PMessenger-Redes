@@ -3,6 +3,8 @@
 
 void alertMenu(const char* alert);
 
+int addContact();
+
 void deleteContact();
 
 void listContact();

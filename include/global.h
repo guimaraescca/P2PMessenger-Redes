@@ -8,7 +8,6 @@
 #define SERVER_PORT 28086
 #define messageSize 2000
 
-// Definição de globais INICIO
 enum threadNames
 {
     THREAD_ACCEPTER,
@@ -16,17 +15,17 @@ enum threadNames
     THREAD_NUM
 };
 
-int serverSocket;
-int threadID[THREAD_NUM];
+extern int serverSocket;
+extern int threadID[THREAD_NUM];
 
-char *serverName = NULL;
+extern char *serverName;
 
-fd_set socketSet;
-pthread_rwlock_t socketSetSync;
+extern fd_set socketSet;
+extern pthread_rwlock_t socketSetSync;
 
-ContactList *contacts = NULL;
-ContactList *pendingAccept = NULL;
+extern ContactList *contacts;
+extern ContactList *pendingAccept;
 
-GenericDeque *pendingRead = NULL;
+extern GenericDeque *pendingRead;
 
 #endif // _GLOBAL_H_

@@ -1,6 +1,7 @@
 #include <interface.h>
 
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -170,28 +171,25 @@ void messageMenu(){
     pthread_rwlock_wrlock( &contacts->sync );
     sender = contactListSearchId(contacts, contactId);
     
-    if( sender == NULL ){
+    if( sender == NULL ) {
         pthread_rwlock_unlock( &contacts->sync );
         alertMenu("ID de contato não encontrado!");
-        return;
-    }else{
+    }
+    else {
         if(sender->messages->head == NULL){    //Não há mensagens a serem lidas
             pthread_rwlock_unlock( &contacts->sync );
             alertMenu("Não há mensagens a serem lidas para este contato!");
-            return;
         }
-        
-        while(sender->messages->head != NULL){ //Verifica se existem msgs a serem lidas
-            
-            messageNode = dequePopFront(sender->messages);
-            
-            printf("> %s\n", (char *)messageNode->item);
+        else {
+            while(sender->messages->head != NULL){ //Verifica se existem msgs a serem lidas
+                messageNode = dequePopFront(sender->messages);
+                printf("> %s\n", (char *)messageNode->item);
+            }
+            pthread_rwlock_unlock( &contacts->sync );
+            printf("\n\tPressione <ENTER> para voltar ao menu principal.\n");
+            getchar();
+            alertMenu(" ");
         }
-        pthread_rwlock_unlock( &contacts->sync );
-        printf("\n\tPressione <ENTER> para voltar ao menu principal.\n");
-        getchar();
-        alertMenu(" ");
-        return;
     }
 }
 
@@ -212,7 +210,6 @@ void sendMessage(){
     if ( receiver == NULL ){
         pthread_rwlock_unlock( &contacts->sync );
         alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
-        return;
     }else{
         printf("Mensagem: ");
         fgets(message, messageSize, stdin);
@@ -234,12 +231,9 @@ void sendMessage(){
                     break;
             }
             pthread_rwlock_unlock( &contacts->sync );
-            return;
         }else{
             pthread_rwlock_unlock( &contacts->sync );
             alertMenu("Mensagem enviada!");
-            return;
-            
         }
     }
 }
@@ -292,7 +286,6 @@ void broadcastMessage(){
         receiverId = atoi(token);
     }
     alertMenu("Mensagem broadcast enviada!");
-    return;
 }
 
 void acceptContact() {
@@ -396,11 +389,9 @@ void menu(){
       		    break;
             case 0:
                 break;
-       	    default:
+      	    default:
                 alertMenu("Opção inválida! Tente novamente.");
         	    break;  	 	
       	}
     }while(input != 0);
-    
-    return;
 }

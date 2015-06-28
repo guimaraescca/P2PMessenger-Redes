@@ -13,6 +13,8 @@
 
 #include <unistd.h>
 
+int idSeed = 1;
+
 ContactNode *contactNodeCreate( int pSocket, const char *pName )
 {
     ContactNode *newNode = (ContactNode *) malloc( sizeof(ContactNode) );
