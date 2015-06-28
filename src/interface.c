@@ -77,7 +77,7 @@ int addContact()
     // Envia o tamanho do nome do servidor local.
     while ( total < sizeof( total ) )
     {
-        partial = send( socketDescriptor, (void *)&nameSize + total, sizeof( nameSize ) - total, 0 );
+        partial = send( socketDescriptor, (void *)(&nameSize + total), sizeof( nameSize ) - total, 0 );
         if ( partial == -1 )
         {
             alertMenu( "Falha ao adicionar contato!" );
@@ -91,7 +91,7 @@ int addContact()
     // Envia o nome local.
     while ( total < nameCharSize )
     {
-        partial = send( socketDescriptor, (void *)&nameSize + total, nameCharSize - total, 0 );
+        partial = send( socketDescriptor, (void *)(&nameSize + total), nameCharSize - total, 0 );
         if ( partial == -1 )
         {
             alertMenu( "Falha ao adicionar contato!" );
@@ -147,18 +147,18 @@ void listContact()
     pthread_rwlock_rdlock( &contacts->sync );
 
     ContactNode *current = contacts->first;
-
-    while ( current != NULL )
-    {
-        contactNodePrint( current );
-        current = current->next;
+    
+    if ( current == NULL )
+        alertMenu( "Lista de contatos vazia!" );
+    else {
+        alertMenu("");
+        do {
+            contactNodePrint( current );
+            current = current->next;
+        } while( current != NULL );
+    
+        pthread_rwlock_unlock( &contacts->sync );
     }
-
-    pthread_rwlock_unlock( &contacts->sync );
-
-    printf("\n\tPressione <ENTER> para voltar ao menu principal.\n");
-    getchar();  //TODO: Essa pausa nao ta funcionando como deveria. :(
-    alertMenu(" ");
 }
 
 void messageMenu(){
@@ -200,10 +200,13 @@ void messageMenu(){
 void sendMessage(){
     
     int sendResult;
-    char buffer[81];
+    size_t bufferSize = 80;
+    char* buffer;
     char* message;
     ContactNode* receiver;
 
+    buffer = (char*)malloc(bufferSize*sizeof(char));
+    
     printf("Digite o nome do contato:\t");
     scanf("%80s", buffer);
 
@@ -215,7 +218,8 @@ void sendMessage(){
         alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
     }else{
         printf("Mensagem: ");
-        fgets(message, messageSize, stdin);
+        getline(&buffer, &bufferSize, stdin);
+        //fgets(message, messageSize, stdin);
         
         sendResult = send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
 
@@ -245,31 +249,41 @@ void sendMessage(){
 void broadcastMessage(){
     
     int receiverId;
-    char message[messageSize];
-    char buffer[4*contacts->size];
+    size_t bufferSize;
+    char* buffer;
+    char* message;
     char* token;    //Necessário para separar o diferente IDs coletados
     ContactNode *receiver;
     
+    bufferSize = messageSize;
+    buffer = (char*)malloc(bufferSize*sizeof(char));
+    
     printf("Mensagem broadcast: ");
-    fgets(message, messageSize, stdin);
+    getline(&buffer, &bufferSize, stdin);
+    strcpy(message, buffer);
+    free(buffer);
+    //fgets(message, messageSize, stdin);
     
     printf("Insira os IDs dos contatos para quem deseja enviar a mensagem seguidos de <ENTER>.\n\n");
     
     //Exibiçao dos IDs da lista
     /*TODO: Não será mais necessário devido a decisões de projeto
     pthread_rwlock_rdlock( &contacts->sync );
-    .
+    
     ContactNode *current = contacts->first;
     while ( current != NULL )
     {
         contactNodePrint( current );
         current = current->next;
     }
-
     pthread_rwlock_unlock( &contacts->sync );
     */
+
     printf("\nEx: 105 201 110 <ENTER>\n");
-    fgets(buffer, (4*contacts->size), stdin );
+    //fgets(buffer, (4*contacts->size), stdin );
+    bufferSize = 5*contacts->size;
+    buffer = (char*)malloc(bufferSize*sizeof(char));
+    getline(&buffer, &bufferSize, stdin);
 
     //Aquisição do primeiro ID dentro do buffer
     token = strtok (buffer," ");
@@ -288,6 +302,7 @@ void broadcastMessage(){
         token = strtok (NULL, " ");
         receiverId = atoi(token);
     }
+    free(buffer);
     alertMenu("Mensagem broadcast enviada!");
 }
 

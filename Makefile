@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Og -pipe -g
+CFLAGS = -Og -pipe -g -w
 
 INCLUDE = -Iinclude/ -isystem/usr/include/
 LIBS = -lpthread

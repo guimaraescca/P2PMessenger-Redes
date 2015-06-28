@@ -146,7 +146,7 @@ void *accepter( void *p )
         nameSize *= sizeof( char );
         while ( total < nameSize )
         {
-            partial = recv( clientSocket, (void *)name + total, nameSize - total, 0 );
+            partial = recv( clientSocket, (void *)(name + total), nameSize - total, 0 );
             if ( partial == -1 )
             {
                 perror( "Erro ao transmitir tamanho do nome local" );

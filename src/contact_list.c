@@ -82,6 +82,8 @@ void contactListDestroy( ContactList *list )
         contactNodeDestroy( current );
         current = next;
     }
+    
+    pthread_rwlock_destroy( &list->sync );
 
     free( list );
 }
@@ -113,11 +115,10 @@ ContactNode *contactListPopFront( ContactList *list )
         if ( list->first != NULL )
             list->first->prev = NULL;
         list->size--;
+        front->next = NULL;
     }
 
     pthread_rwlock_unlock( &list->sync );
-    
-    front->next = NULL;
 
     return front;
 }
