@@ -9,7 +9,7 @@ void deleteContact();
 
 void listContact();
 
-void messageMenu()
+void messageMenu();
 
 void sendMessage();
 

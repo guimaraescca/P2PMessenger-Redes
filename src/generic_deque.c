@@ -36,6 +36,8 @@ GenericDeque *dequeCreate()
 
     newDeque->size = 0;
     newDeque->head = newDeque->tail = NULL;
+
+    return newDeque;
 }
 
 void dequeDestroy( GenericDeque *deque )

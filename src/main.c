@@ -235,19 +235,30 @@ int main()
     }
 
     // Criação do servidor.
-    createServer();
+    if ( createServer() == -1 )
+        return -1;
 
     // Inicialização das threads.
     threadID[THREAD_ACCEPTER] = pthread_create( &threads[THREAD_ACCEPTER], NULL, accepter, NULL);
     threadID[THREAD_SELECTER] = pthread_create( &threads[THREAD_SELECTER], NULL, selecter, NULL);
 
+    // Chamada da interface principal.
+    menu();
+    
     // Destruição das estruturas alocadas.
     if ( contacts != NULL )
         contactListDestroy( contacts );
+
+    if ( pendingAccept != NULL )
+        contactListDestroy( pendingAccept );
+        
+    if ( pendingRead != NULL )
+        dequeDestroy( pendingRead );
 
     if ( pthread_rwlock_destroy( &socketSetSync ) != 0 )
     {
         perror( "Erro ao destruir trava de leitura e escrita" );
         return -1;
     }
+    close( serverSocket );
 }

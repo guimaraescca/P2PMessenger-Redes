@@ -153,6 +153,7 @@ void listContact()
     }
 
     pthread_rwlock_unlock( &contacts->sync );
+
     printf("\n\tPressione <ENTER> para voltar ao menu principal.\n");
     getchar();  //TODO: Essa pausa nao ta funcionando como deveria. :(
     alertMenu(" ");
@@ -333,6 +334,7 @@ void menu(){
         printf("3 - Deletar contato.\n");
         printf("4 - Enviar mensagem.\n");
         printf("5 - Enviar mensagem em grupo.\n");
+
         pthread_rwlock_rdlock( &pendingAccept );
         if ( pendingAccept->size > 0 ){
             alerts = 1;
@@ -345,6 +347,7 @@ void menu(){
             printf("7 - Ler mensagens.\n");
         }
         pthread_rwlock_unlock( &pendingRead );
+
         printf("0 - Fechar programa.\n\n");
     
         printf("~$ ");
