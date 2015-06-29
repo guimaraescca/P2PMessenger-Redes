@@ -73,7 +73,7 @@ void *selecter( void *p )
         timeout.tv_sec = 2; // Timeout a cada 2 segundos, para que o conjunto de sockets possa ser atualizado.
         timeout.tv_usec = 0;
 
-        pthread_rwlock_rdlock( &socketSetSync );
+        // pthread_rwlock_rdlock( &socketSetSync );
         result = select( FD_SETSIZE, &socketSet, NULL, NULL, &timeout );
 
         // pthread_rwlock_rdlock( &contacts->sync );
@@ -95,18 +95,18 @@ void *selecter( void *p )
             }
 
             // pthread_rwlock_unlock( &contacts->sync );
-            pthread_rwlock_unlock( &socketSetSync );
+            // pthread_rwlock_unlock( &socketSetSync );
 
             for ( i = 0; i < result; ++i )
                 pthread_join( ID[i], NULL );
 
-            pthread_rwlock_wrlock( &pendingReadSync );
+            // pthread_rwlock_wrlock( &pendingReadSync );
             pendingRead = 2;
-            pthread_rwlock_unlock( &pendingReadSync );
+            // pthread_rwlock_unlock( &pendingReadSync );
         }
         else {
             // pthread_rwlock_unlock( &contacts->sync );
-            pthread_rwlock_unlock( &socketSetSync );
+            // pthread_rwlock_unlock( &socketSetSync );
             if ( result == -1 ){
                 perror( "Erro em select" );
                 return (void *)-1;
@@ -143,9 +143,9 @@ void *accepter( void *p )
         recv( clientSocket, (void *)name, nameSize, 0 );
         cout << "Nome recebido: " << name << endl;
 
-        pthread_rwlock_wrlock( &pendingAccept->sync );
+        // pthread_rwlock_wrlock( &pendingAccept->sync );
         contactListInsert( pendingAccept, contactNodeCreate( clientSocket, string(name) ) );
-        pthread_rwlock_unlock( &pendingAccept->sync );
+        // pthread_rwlock_unlock( &pendingAccept->sync );
 
         free(name);
     }

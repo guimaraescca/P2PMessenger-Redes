@@ -57,7 +57,7 @@ int addContact()
 
     // Criação do nome do contato.
     int notUsed = 0;
-    pthread_rwlock_rdlock( &contacts->sync );
+    // pthread_rwlock_rdlock( &contacts->sync );
     do
     {
         cout << "Digite um nome para o contato de até 80 caracteres e sem espaços:\t";
@@ -68,7 +68,7 @@ int addContact()
         }else
             notUsed = 1;
     } while ( notUsed == 0 ); // Enquanto o nome fornecido já tiver sido utilizado.
-    pthread_rwlock_unlock( &contacts->sync );
+    // pthread_rwlock_unlock( &contacts->sync );
 
     // Estabelecimento de conexão.
     if ( connect( socketDescriptor, (struct sockaddr *)&sa, sizeof( sa ) ) == -1 )
@@ -107,9 +107,9 @@ int addContact()
         total += partial;
     }
     // Atualizar conjunto de sockets.
-    pthread_rwlock_wrlock( &socketSetSync );
+    // pthread_rwlock_wrlock( &socketSetSync );
     FD_SET( socketDescriptor, &socketSet );
-    pthread_rwlock_unlock( &socketSetSync );
+    // pthread_rwlock_unlock( &socketSetSync );
 
     contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
 
@@ -126,29 +126,29 @@ void deleteContact()
     cout << "Digite o nome do contato, não utilize espaços e máximo de 80 caracteres."  << endl;
     getline( cin, buffer );
 
-    pthread_rwlock_wrlock( &contacts->sync );
+    // pthread_rwlock_wrlock( &contacts->sync );
     ContactNode *deleted = contactListSearch( contacts, buffer.c_str() );
 
     if ( deleted == NULL ){
         alertMenu("Não há contato com esse nome na sua lista de contatos.");
     }else
     {
-        pthread_rwlock_wrlock( &socketSetSync );
+        // pthread_rwlock_wrlock( &socketSetSync );
         FD_CLR( deleted->socket, &socketSet );
-        pthread_rwlock_unlock( &socketSetSync );
+        // pthread_rwlock_unlock( &socketSetSync );
 
         contactListRemove( contacts, deleted );
 
         alertMenu("Contato removido com sucesso.");
     }
 
-    pthread_rwlock_unlock( &contacts->sync );
+    // pthread_rwlock_unlock( &contacts->sync );
 }
 
 //=================== LIST CONTACTS ============================================
 void listContact()
 {
-    pthread_rwlock_rdlock( &contacts->sync );
+    // pthread_rwlock_rdlock( &contacts->sync );
 
     ContactNode *current = contacts->first;
 
@@ -161,11 +161,11 @@ void listContact()
             current = current->next;
         } while( current != NULL );
     }
-    pthread_rwlock_unlock( &contacts->sync );
+    // pthread_rwlock_unlock( &contacts->sync );
 
-    pthread_rwlock_wrlock( &pendingReadSync );
+    // pthread_rwlock_wrlock( &pendingReadSync );
     pendingRead = 0;
-    pthread_rwlock_unlock( &pendingReadSync );
+    // pthread_rwlock_unlock( &pendingReadSync );
 }
 
 void messageMenu(){
@@ -177,16 +177,16 @@ void messageMenu(){
     cout << "Digite o ID do contato para ver as mensagens recebidas:\t";
     cin >> contactId;
 
-    pthread_rwlock_wrlock( &contacts->sync );
+    // pthread_rwlock_wrlock( &contacts->sync );
     sender = contactListSearchId(contacts, contactId);
 
     if( sender == NULL ) {
-        pthread_rwlock_unlock( &contacts->sync );
+        // pthread_rwlock_unlock( &contacts->sync );
         alertMenu("ID de contato não encontrado!");
     }
     else {
         if(sender->messages->head == NULL){    //Não há mensagens a serem lidas
-            pthread_rwlock_unlock( &contacts->sync );
+            // pthread_rwlock_unlock( &contacts->sync );
             alertMenu("Não há mensagens a serem lidas para este contato!");
         }
         else {
@@ -194,7 +194,7 @@ void messageMenu(){
                 messageNode = dequePopFront(sender->messages);
                 cout << "> " << (char *)messageNode->item << endl;
             }
-            pthread_rwlock_unlock( &contacts->sync );
+            // pthread_rwlock_unlock( &contacts->sync );
         }
     }
 }
@@ -210,11 +210,11 @@ void sendMessage(){
     cout << "Digite o nome do contato:\t";
     getline( cin, buffer );
 
-    pthread_rwlock_wrlock( &contacts->sync );
+    // pthread_rwlock_wrlock( &contacts->sync );
     receiver = contactListSearch(contacts, buffer.c_str());
 
     if ( receiver == NULL ){
-        pthread_rwlock_unlock( &contacts->sync );
+        // pthread_rwlock_unlock( &contacts->sync );
         alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
     }else{
         cout << "Digite sua mensagem:\n";
@@ -237,9 +237,9 @@ void sendMessage(){
                     fprintf( stderr, "Tente enviar novamente.\n" );
                     break;
             }
-            pthread_rwlock_unlock( &contacts->sync );
+            // pthread_rwlock_unlock( &contacts->sync );
         }else{
-            pthread_rwlock_unlock( &contacts->sync );
+            // pthread_rwlock_unlock( &contacts->sync );
             alertMenu("Mensagem enviada!");
         }
     }
@@ -263,7 +263,7 @@ void broadcastMessage(){
     stringstream idList( buffer );
 
     idList >> receiverId;
-    pthread_rwlock_rdlock( &contacts->sync );
+    // pthread_rwlock_rdlock( &contacts->sync );
     if ( !idList ) { // Se não houve erro.
         do {
             //Pesquisa do ID dentro da lista e envio da mensagem.
@@ -276,13 +276,13 @@ void broadcastMessage(){
             }
         } while( !idList );
     }
-    pthread_rwlock_unlock( &contacts->sync );
+    // pthread_rwlock_unlock( &contacts->sync );
 
     alertMenu("Mensagem broadcast enviada!");
 }
 
 void acceptContact() {
-    pthread_rwlock_wrlock( &pendingAccept->sync );
+    // pthread_rwlock_wrlock( &pendingAccept->sync );
 
     if ( pendingAccept->size > 0 ) {
         ContactNode *current = contactListPopFront( pendingAccept );
@@ -293,7 +293,7 @@ void acceptContact() {
             cout << "Nome: " << current->name << "\nAceitar [s/n]?\t";
             cin >> accept;
             if ( accept[0] == 's' ) {
-                pthread_rwlock_wrlock( &contacts->sync );
+                // pthread_rwlock_wrlock( &contacts->sync );
 
                 if ( contactListSearch( contacts, current->name ) != NULL ) {
                     do {
@@ -304,18 +304,18 @@ void acceptContact() {
                 }
                 contactListInsert( contacts, current );
 
-                pthread_rwlock_unlock( &contacts->sync );
+                // pthread_rwlock_unlock( &contacts->sync );
 
-                pthread_rwlock_wrlock( &socketSetSync );
+                // pthread_rwlock_wrlock( &socketSetSync );
                 FD_SET( current->socket, &socketSet );
-                pthread_rwlock_unlock( &socketSetSync );
+                // pthread_rwlock_unlock( &socketSetSync );
 
                 cout << "Contato adicionado com sucesso!\n";
             }
             current = contactListPopFront( pendingAccept );
         }
     }
-    pthread_rwlock_unlock( &pendingAccept->sync );
+    // pthread_rwlock_unlock( &pendingAccept->sync );
     alertMenu( "Não há mais contatos a serem aceitos." );
 }
 
@@ -328,12 +328,12 @@ void menu(){
         alerts = 0;
         cout << "=============================================\n\t[ Menu ] - Bem vindo(a) " << serverName << "\n=============================================\n\n";
 
-        pthread_rwlock_wrlock( &pendingReadSync );
+        // pthread_rwlock_wrlock( &pendingReadSync );
         if ( pendingRead == 2 ) {
             cout << ( "Aviso! Há novas mensagens não lidas!\n\n" );
             pendingRead = 1;
         }
-        pthread_rwlock_unlock( &pendingReadSync );
+        // pthread_rwlock_unlock( &pendingReadSync );
 
         cout << ("[1] - Adicionar contato.\n");
         cout << ("[2] - Listar contatos.\n");
@@ -341,17 +341,17 @@ void menu(){
         cout << ("[4] - Enviar mensagem.\n");
         cout << ("[5] - Enviar mensagem em grupo.\n");
 
-        pthread_rwlock_rdlock( &pendingReadSync );
+        // pthread_rwlock_rdlock( &pendingReadSync );
         if ( pendingRead == 1 )
             cout << ("[6] - Ler mensagens.\n");
-        pthread_rwlock_unlock( &pendingReadSync );
+        // pthread_rwlock_unlock( &pendingReadSync );
 
-        pthread_rwlock_rdlock( &pendingAccept->sync );
+        // pthread_rwlock_rdlock( &pendingAccept->sync );
         if ( pendingAccept->size > 0 ){
             alerts = 1;
             cout << ("[7] - Adições pendentes.\n");
         }
-        pthread_rwlock_unlock( &pendingAccept->sync );
+        // pthread_rwlock_unlock( &pendingAccept->sync );
 
         cout << ("[0] - Fechar programa.\n\n=============================================\n");
         cout << ("~$ ");
