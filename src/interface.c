@@ -34,6 +34,7 @@ int addContact()
     int errornum, socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
     string buffer;
     struct sockaddr_in sa;
+    char name[81];
 
     sa.sin_family = AF_INET;
 
@@ -110,7 +111,9 @@ int addContact()
     FD_SET( socketDescriptor, &socketSet );
     pthread_rwlock_unlock( &socketSetSync );
 
+    pthread_rwlock_wrlock( &contacts->sync );
     contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
+    pthread_rwlock_unlock( &contacts->sync );
 
     alertMenu( "Contato adicionado com sucesso." );
 
@@ -285,22 +288,22 @@ void acceptContact() {
     pthread_rwlock_wrlock( &pendingAccept->sync );
 
     if ( pendingAccept->size > 0 ) {
-        ContactNode *current = contactListPopFront( pendingAccept, 0 );
-        string accept;
+        ContactNode *current = contactListPopFront( pendingAccept );
+        string accept, name;
 
         cout << "Há" << pendingAccept->size << "contatos a serem aceitos.\n";
         while ( current != NULL ) {
             cout << "Nome: " << current->name << "\nAceitar [s/n]?\t";
-            getline( cin, accept );
+            cin >> accept;
             if ( accept[0] == 's' ) {
-
                 pthread_rwlock_wrlock( &contacts->sync );
 
-                if ( contactListSearch( contacts, current->name.c_str() ) != NULL ) {
+                if ( contactListSearch( contacts, current->name ) != NULL ) {
                     do {
                         cout << "O nome já está na sua lista, digite outro nome com até 80 caracteres.\n";
-                        getline( cin, current->name );
-                    } while ( contactListSearch( contacts, current->name.c_str() ) != NULL );
+                        cin >> name;
+                        current->name = (char *) realloc( current->name, sizeof(char) * ( name.size() + 1 ) );
+                    } while ( contactListSearch( contacts, current->name ) != NULL );
                 }
                 contactListInsert( contacts, current );
 
@@ -312,7 +315,7 @@ void acceptContact() {
 
                 cout << "Contato adicionado com sucesso!\n";
             }
-            current = contactListPopFront( pendingAccept, 0 );
+            current = contactListPopFront( pendingAccept );
         }
     }
     pthread_rwlock_unlock( &pendingAccept->sync );

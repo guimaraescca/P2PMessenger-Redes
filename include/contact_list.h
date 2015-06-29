@@ -9,7 +9,7 @@ using namespace std;
 
 typedef struct contactNode
 {
-    string name;
+    char *name;
     int socket;
     int id;
 
@@ -38,7 +38,7 @@ void contactListDestroy( ContactList *list );
 
 void contactListInsert( ContactList *list, ContactNode *node );
 
-ContactNode *contactListPopFront( ContactList *list, int lock );
+ContactNode *contactListPopFront( ContactList *list );
 
 /* As funções de busca devem ser usadas com cuidado, já que podem levar
 * a condições de disputa ou impasses.

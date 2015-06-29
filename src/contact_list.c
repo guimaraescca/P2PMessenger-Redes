@@ -24,7 +24,8 @@ ContactNode *contactNodeCreate( int pSocket, string pName )
 
     newNode->messages = dequeCreate();
     newNode->socket = pSocket;
-    newNode->name = pName;
+    newNode->name = (char *) malloc( sizeof(char) * (pName.size() + 1) );
+    strcpy( newNode->name, pName.c_str() );
     newNode->prev = newNode->next = NULL;
     newNode->id = idSeed;
     idSeed++;
@@ -95,8 +96,6 @@ void contactListDestroy( ContactList *list )
 
 void contactListInsert( ContactList *list, ContactNode *node )
 {
-    pthread_rwlock_wrlock( &list->sync );
-
     if ( list->first != NULL )
     {
         node->next = list->first;
@@ -104,15 +103,10 @@ void contactListInsert( ContactList *list, ContactNode *node )
     }
     list->first = node;
     list->size++;
-
-    pthread_rwlock_unlock( &list->sync );
 }
 
-ContactNode *contactListPopFront( ContactList *list, int lock )
+ContactNode *contactListPopFront( ContactList *list )
 {
-    if ( lock != 0 )
-        pthread_rwlock_wrlock( &list->sync );
-
     ContactNode *front = list->first;
 
     if ( front != NULL )
@@ -123,9 +117,6 @@ ContactNode *contactListPopFront( ContactList *list, int lock )
         list->size--;
         front->next = NULL;
     }
-
-    if ( lock != 0 )
-        pthread_rwlock_unlock( &list->sync );
 
     return front;
 }

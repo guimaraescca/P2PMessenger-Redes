@@ -76,7 +76,7 @@ void *selecter( void *p )
         pthread_rwlock_rdlock( &socketSetSync );
         result = select( FD_SETSIZE, &socketSet, NULL, NULL, &timeout );
 
-        pthread_rwlock_rdlock( &contacts->sync );
+        // pthread_rwlock_rdlock( &contacts->sync );
 
         if ( result > 0 ) // Se algum socket recebeu dados.
         {
@@ -94,7 +94,7 @@ void *selecter( void *p )
                 current = current->next;
             }
 
-            pthread_rwlock_unlock( &contacts->sync );
+            // pthread_rwlock_unlock( &contacts->sync );
             pthread_rwlock_unlock( &socketSetSync );
 
             for ( i = 0; i < result; ++i )
@@ -105,7 +105,7 @@ void *selecter( void *p )
             pthread_rwlock_unlock( &pendingReadSync );
         }
         else {
-            pthread_rwlock_unlock( &contacts->sync );
+            // pthread_rwlock_unlock( &contacts->sync );
             pthread_rwlock_unlock( &socketSetSync );
             if ( result == -1 ){
                 perror( "Erro em select" );
@@ -124,7 +124,7 @@ void *accepter( void *p )
     int clientSocket;
     struct sockaddr_in addr;
     socklen_t length;
-    char name[81];
+    char *name;
 
     while ( 1 )
     {
@@ -136,32 +136,18 @@ void *accepter( void *p )
             perror( "Erro ao obter socket para o cliente" );
             return (void *)-1;
         }
-        ssize_t total = 0, partial, nameSize;
-        // Recebe o tamanho do nome do servidor local.
-        while ( total < sizeof( nameSize ) )
-        {
-            partial = recv( clientSocket, (void *)(&nameSize + total), sizeof( nameSize ) - total, 0 );
-            if ( partial == -1 )
-            {
-                perror( "Erro ao transmitir tamanho do nome local" );
-                return (void *)-1;
-            }
-            total += partial;
-        }
-        total = 0;
+        ssize_t nameSize;
+
+        recv( clientSocket, (void *)&nameSize, sizeof( nameSize ), 0 );
+        name = (char *) malloc( nameSize );
+        recv( clientSocket, (void *)name, nameSize, 0 );
         cout << "Nome recebido: " << name << endl;
-        // Recebe o nome local.
-        while ( total < nameSize )
-        {
-            partial = recv( clientSocket, (void *)(name + total), nameSize - total, 0 );
-            if ( partial == -1 )
-            {
-                perror( "Erro ao transmitir tamanho do nome local" );
-                return (void *)-1;
-            }
-            total += partial;
-        }
+
+        pthread_rwlock_wrlock( &pendingAccept->sync );
         contactListInsert( pendingAccept, contactNodeCreate( clientSocket, string(name) ) );
+        pthread_rwlock_unlock( &pendingAccept->sync );
+
+        free(name);
     }
 
 }
