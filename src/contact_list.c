@@ -139,7 +139,7 @@ ContactNode *contactListSearch( ContactList *list, const char *key )
 {
     ContactNode *current = list->first;
 
-    while ( current != NULL && current->name != key )
+    while ( current != NULL && ( strcmp(current->name, key) != 0 ) )
         current = current->next;
 
     return current;

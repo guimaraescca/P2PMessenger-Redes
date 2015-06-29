@@ -124,7 +124,7 @@ void deleteContact()
     string buffer;
 
     cout << "Digite o nome do contato, não utilize espaços e máximo de 80 caracteres."  << endl;
-    getline( cin, buffer );
+    cin >> buffer;
 
     // pthread_rwlock_wrlock( &contacts->sync );
     ContactNode *deleted = contactListSearch( contacts, buffer.c_str() );
@@ -208,7 +208,7 @@ void sendMessage(){
     ContactNode* receiver;
 
     cout << "Digite o nome do contato:\t";
-    getline( cin, buffer );
+    cin >> buffer;
 
     // pthread_rwlock_wrlock( &contacts->sync );
     receiver = contactListSearch(contacts, buffer.c_str());
@@ -218,7 +218,7 @@ void sendMessage(){
         alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
     }else{
         cout << "Digite sua mensagem:\n";
-        getline( cin, buffer );
+        cin >> buffer;
 
         sendResult = send( receiver->socket, buffer.c_str(), (buffer.size() + 1) * sizeof(char), 0 );
 
@@ -285,10 +285,9 @@ void acceptContact() {
     // pthread_rwlock_wrlock( &pendingAccept->sync );
 
     if ( pendingAccept->size > 0 ) {
+        cout << "Há " << pendingAccept->size << " contatos a serem aceitos.\n";
         ContactNode *current = contactListPopFront( pendingAccept );
         string accept, name;
-
-        cout << "Há" << pendingAccept->size << "contatos a serem aceitos.\n";
         while ( current != NULL ) {
             cout << "Nome: " << current->name << "\nAceitar [s/n]?\t";
             cin >> accept;
@@ -300,6 +299,7 @@ void acceptContact() {
                         cout << "O nome já está na sua lista, digite outro nome com até 80 caracteres.\n";
                         cin >> name;
                         current->name = (char *) realloc( current->name, sizeof(char) * ( name.size() + 1 ) );
+                        strcpy( current->name,  name.c_str() );
                     } while ( contactListSearch( contacts, current->name ) != NULL );
                 }
                 contactListInsert( contacts, current );
