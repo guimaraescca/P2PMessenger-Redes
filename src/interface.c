@@ -111,9 +111,7 @@ int addContact()
     FD_SET( socketDescriptor, &socketSet );
     pthread_rwlock_unlock( &socketSetSync );
 
-    pthread_rwlock_wrlock( &contacts->sync );
     contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
-    pthread_rwlock_unlock( &contacts->sync );
 
     alertMenu( "Contato adicionado com sucesso." );
 
@@ -162,9 +160,8 @@ void listContact()
             contactNodePrint( current );
             current = current->next;
         } while( current != NULL );
-
-        pthread_rwlock_unlock( &contacts->sync );
     }
+    pthread_rwlock_unlock( &contacts->sync );
 
     pthread_rwlock_wrlock( &pendingReadSync );
     pendingRead = 0;

@@ -103,6 +103,7 @@ void contactListInsert( ContactList *list, ContactNode *node )
     }
     list->first = node;
     list->size++;
+    cout << "Sussa" << endl;
 }
 
 ContactNode *contactListPopFront( ContactList *list )
