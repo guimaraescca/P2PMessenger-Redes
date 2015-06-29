@@ -26,12 +26,13 @@ void alertMenu(const char* alert){
 int addContact()
 {
     int errornum, socketDescriptor = socket( PF_INET, SOCK_STREAM, 0 );
-    char buffer[81];
+    char* buffer;
     struct sockaddr_in sa;
 
     sa.sin_family = AF_INET;
-
-    printf( "Digite o endereço IP:\t" );
+    buffer = (char*)malloc( 81*sizeof(char) );
+    
+    printf( "Digite o endereço IP: " );
     scanf( "%15s", buffer );
 
     // Conversão da string em endereço IP.
@@ -54,7 +55,7 @@ int addContact()
     do
     {
         printf( "Digite um nome para o contato:\t" );
-        scanf( "%80s", buffer );
+        scanf( "%s", buffer );
 
         if ( contactListSearch( contacts, buffer ) != NULL ){
             printf( "Nome já utilizado!\n");
@@ -62,7 +63,8 @@ int addContact()
             notUsed = 1;
     } while ( notUsed == 0 ); // Enquanto o nome fornecido já tiver sido utilizado.
     pthread_rwlock_unlock( &contacts->sync );
-
+    
+    printf( "Nome válido: %s", buffer );
     // Estabelecimento de conexão.
     if ( connect( socketDescriptor, (struct sockaddr *)&sa, sizeof( sa ) ) == -1 )
     {
@@ -70,7 +72,6 @@ int addContact()
         perror( "Não foi possível estabelecer conexão" );
         return -1;
     }
-    
     ssize_t total = 0, partial, nameSize = strlen( serverName ), 
         nameCharSize = sizeof( char ) * nameSize;
     
@@ -87,6 +88,7 @@ int addContact()
         }
         total += partial;
     }
+    printf( "Tamanho do nome enviado.\n" );
     total = 0;
     // Envia o nome local.
     while ( total < nameCharSize )
@@ -101,7 +103,7 @@ int addContact()
         }
         total += partial;
     }
-
+    printf( "Nome enviado.\n" );
     // Atualizar conjunto de sockets.
     pthread_rwlock_wrlock( &socketSetSync );
     FD_SET( socketDescriptor, &socketSet );
@@ -111,7 +113,7 @@ int addContact()
 
     alertMenu("Contato adicionado com sucesso.");
     
-    return -1;
+    return 1;
 }
 
 //=================== DELETE CONTACT ===========================================
@@ -159,14 +161,17 @@ void listContact()
     
         pthread_rwlock_unlock( &contacts->sync );
     }
+    
+    pthread_rwlock_wrlock( &pendingReadSync );
+    pendingRead = 0;
+    pthread_rwlock_unlock( &pendingReadSync );
 }
 
 void messageMenu(){
     
-    int contactId, msgNumber;
+    int contactId;
     ContactNode* sender;        //De quem se deseja ler as mensagens
     GenericNode* messageNode;   //Mensagem que será lida.
-    char* message;
     
     printf("Digite o ID do contato para ver as mensagens recebidas:\t");
     scanf("%d", &contactId);
@@ -189,9 +194,6 @@ void messageMenu(){
                 printf("> %s\n", (char *)messageNode->item);
             }
             pthread_rwlock_unlock( &contacts->sync );
-            printf("\n\tPressione <ENTER> para voltar ao menu principal.\n");
-            getchar();
-            alertMenu(" ");
         }
     }
 }
@@ -200,11 +202,12 @@ void messageMenu(){
 void sendMessage(){
     
     int sendResult;
-    size_t bufferSize = 80;
+    size_t bufferSize = 81;
     char* buffer;
     char* message;
     ContactNode* receiver;
-
+    
+    message = (char*)malloc(bufferSize*sizeof(char));
     buffer = (char*)malloc(bufferSize*sizeof(char));
     
     printf("Digite o nome do contato:\t");
@@ -219,7 +222,7 @@ void sendMessage(){
     }else{
         printf("Mensagem: ");
         getline(&buffer, &bufferSize, stdin);
-        //fgets(message, messageSize, stdin);
+        strcpy(message, buffer);
         
         sendResult = send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
 
@@ -235,6 +238,7 @@ void sendMessage(){
                     break;
                 default:
                     perror( "Erro inesperado" );
+                    printf( "Tente enviar novamente.\n" );
                     break;
             }
             pthread_rwlock_unlock( &contacts->sync );
@@ -252,35 +256,18 @@ void broadcastMessage(){
     size_t bufferSize;
     char* buffer;
     char* message;
-    char* token;    //Necessário para separar o diferente IDs coletados
+    char* token;    //Necessário para separar os diferente IDs coletados
     ContactNode *receiver;
     
     bufferSize = messageSize;
-    buffer = (char*)malloc(bufferSize*sizeof(char));
-    
-    printf("Mensagem broadcast: ");
-    getline(&buffer, &bufferSize, stdin);
-    strcpy(message, buffer);
-    free(buffer);
-    //fgets(message, messageSize, stdin);
-    
-    printf("Insira os IDs dos contatos para quem deseja enviar a mensagem seguidos de <ENTER>.\n\n");
-    
-    //Exibiçao dos IDs da lista
-    /*TODO: Não será mais necessário devido a decisões de projeto
-    pthread_rwlock_rdlock( &contacts->sync );
-    
-    ContactNode *current = contacts->first;
-    while ( current != NULL )
-    {
-        contactNodePrint( current );
-        current = current->next;
-    }
-    pthread_rwlock_unlock( &contacts->sync );
-    */
+    message = (char*)malloc(bufferSize*sizeof(char));
 
-    printf("\nEx: 105 201 110 <ENTER>\n");
-    //fgets(buffer, (4*contacts->size), stdin );
+    printf("Mensagem broadcast: ");
+    getline(&message, &bufferSize, stdin);
+
+    printf("\nInsira os IDs dos contatos para quem deseja enviar a mensagem seguidos de <ENTER>.\n");
+    printf("Ex: 105 201 110 <ENTER>\n");
+    
     bufferSize = 5*contacts->size;
     buffer = (char*)malloc(bufferSize*sizeof(char));
     getline(&buffer, &bufferSize, stdin);
@@ -294,15 +281,26 @@ void broadcastMessage(){
         pthread_rwlock_wrlock( &contacts->sync );
         
         receiver = contactListSearchId(contacts, receiverId);
-        send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
-        
-        pthread_rwlock_unlock( &contacts->sync );
-        
-        //Aquisisão do próximo ID no buffer. 
-        token = strtok (NULL, " ");
-        receiverId = atoi(token);
+        if(receiver == NULL){
+            printf("Erro ao endereçar o nó inválido de contato!\n\n");
+            token = NULL;
+            
+            free(buffer);
+            free(message);
+            return;
+        }else{
+            send( receiver->socket, message, (strlen(message) + 1) * sizeof(char), 0 );
+            
+            pthread_rwlock_unlock( &contacts->sync );
+            
+            //Aquisisão do próximo ID no buffer. 
+            token = strtok (NULL, " ");
+            receiverId = atoi(token);
+        }
     }
+    
     free(buffer);
+    free(message);
     alertMenu("Mensagem broadcast enviada!");
 }
 
@@ -310,14 +308,14 @@ void acceptContact() {
     pthread_rwlock_wrlock( &pendingAccept->sync );
 
     if ( pendingAccept->size > 0 ) {
-        ContactNode *current = contactListPopFront( pendingAccept );
-        char accept;
+        ContactNode *current = contactListPopFront( pendingAccept, 0 );
+        char accept[2];
 
         printf( "Há %d contatos a serem aceitos.\n", pendingAccept->size );
         while ( current != NULL ) {
             printf( "Nome: %s\nAceitar [s/n]?", current->name );
-            scanf( "%c", &accept );
-            if ( accept == 's' ) {
+            scanf( "%s", accept );
+            if ( accept[0] == 's' ) {
                 pthread_rwlock_wrlock( &contacts->sync );
                 if ( contactListSearch( contacts, current->name ) != NULL ) {
                     current->name = (char *) realloc( current->name, sizeof( char ) * 81 );
@@ -328,9 +326,13 @@ void acceptContact() {
                 }
                 contactListInsert( contacts, current );
                 pthread_rwlock_unlock( &contacts->sync );
+    
+                pthread_rwlock_wrlock( &socketSetSync );
+                FD_SET( current->socket, &socketSet );
+                pthread_rwlock_unlock( &socketSetSync );
                 printf( "Contato aceito com sucesso!\n" );
             }
-            current = contactListPopFront( pendingAccept );
+            current = contactListPopFront( pendingAccept, 0 );
         }
     }
     pthread_rwlock_unlock( &pendingAccept->sync );
@@ -340,39 +342,42 @@ void acceptContact() {
 //=================== MAIN MENU ================================================
 void menu(){
     
-    char inputStr[2];
-    int input, alerts, read;
+    int input, alerts;
 
     do{
-        alerts = read = 0;
-        printf("> Menu\n\n");
+        alerts = 0;
+        printf("=============================================\n\t[ Menu ] - Bem vindo(a) %s\n=============================================\n\n", serverName);
+        
+        pthread_rwlock_rdlock( &pendingReadSync );
+        if ( pendingRead == 1 )
+            printf( "Aviso! Você recebeu novas mensagens!\n\n" );
+        pthread_rwlock_unlock( &pendingReadSync );
     
-        printf("1 - Adicionar contato.\n");
-        printf("2 - Listar contatos.\n");
-        printf("3 - Deletar contato.\n");
-        printf("4 - Enviar mensagem.\n");
-        printf("5 - Enviar mensagem em grupo.\n");
+        printf("[1] - Adicionar contato.\n");
+        printf("[2] - Listar contatos.\n");
+        printf("[3] - Deletar contato.\n");
+        printf("[4] - Enviar mensagem.\n");
+        printf("[5] - Enviar mensagem em grupo.\n");
+
+        pthread_rwlock_rdlock( &pendingReadSync );
+        if ( pendingRead == 1 )
+            printf("[6] - Ler mensagens.\n");
+        pthread_rwlock_unlock( &pendingReadSync );
 
         pthread_rwlock_rdlock( &pendingAccept->sync );
         if ( pendingAccept->size > 0 ){
             alerts = 1;
-            printf("6 - Adições pendentes.\n");
+            printf("[7] - Adições pendentes.\n");
         }
         pthread_rwlock_unlock( &pendingAccept->sync );
-        pthread_rwlock_rdlock( &pendingRead->sync );
-        if ( pendingRead->size > 0 ) {
-            read = 1;
-            printf("7 - Ler mensagens.\n");
-        }
-        pthread_rwlock_unlock( &pendingRead->sync );
 
-        printf("0 - Fechar programa.\n\n");
+        printf("[0] - Fechar programa.\n\n=============================================\n");
     
         printf("~$ ");
-        //fgets(inputStr ,2 ,stdin);
-        //input = strtol(inputStr, NULL, 10);
+        
         scanf("%d", &input);
-    
+        getchar();  //TODO: Retirar isto aqui.
+        
         switch(input) {
           	case 1:
           	    alertMenu("> Adicionar contato");
@@ -394,21 +399,17 @@ void menu(){
                 alertMenu("> Envio de mensagem em grupo");
                 broadcastMessage();
       		    break;
-            case 6:
+      		case 6:
+                alertMenu("> Leitura de mensagens");
+      		    messageMenu();
+      		    break;
+            case 7:
                 if ( alerts == 0 )
                     alertMenu("Opção inválida! Tente novamente.");
                 else {
                     alertMenu("> Aceitar contatos");
                     acceptContact();
                 }
-      		    break;
-      		case 7:
-      		    if ( read == 0 )
-      		        alertMenu("Opção inválida! Tente novamente.");
-      		    else {
-                    alertMenu("> Leitura de mensagens");
-      		        messageMenu();
-      		    }
       		    break;
             case 0:
                 break;

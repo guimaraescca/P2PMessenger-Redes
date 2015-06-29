@@ -53,6 +53,10 @@ int contactNodePrint( ContactNode *node )
     inet_ntop( AF_INET, &addr.sin_addr, ipstr, sizeof( ipstr ) );
 
     printf( "ID: %d - Nome: %s\nIP: %s\n", node->id, node->name, ipstr );
+    pthread_rwlock_rdlock( &node->messages->sync );
+    if ( node->messages->size > 0 )
+        printf( "%zu mensagens não lidas.", node->messages->size );
+    pthread_rwlock_unlock( &node->messages->sync );
 
     return -1;
 }
@@ -103,9 +107,10 @@ void contactListInsert( ContactList *list, ContactNode *node )
     pthread_rwlock_unlock( &list->sync );
 }
 
-ContactNode *contactListPopFront( ContactList *list )
+ContactNode *contactListPopFront( ContactList *list, int lock )
 {
-    pthread_rwlock_wrlock( &list->sync );
+    if ( lock != 0 )
+        pthread_rwlock_wrlock( &list->sync );
     
     ContactNode *front = list->first;
 
@@ -118,7 +123,8 @@ ContactNode *contactListPopFront( ContactList *list )
         front->next = NULL;
     }
 
-    pthread_rwlock_unlock( &list->sync );
+    if ( lock != 0 )
+        pthread_rwlock_unlock( &list->sync );
 
     return front;
 }

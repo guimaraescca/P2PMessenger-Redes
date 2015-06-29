@@ -26,6 +26,7 @@ extern pthread_rwlock_t socketSetSync;
 extern ContactList *contacts;
 extern ContactList *pendingAccept;
 
-extern GenericDeque *pendingRead;
+extern int pendingRead;
+extern pthread_rwlock_t pendingReadSync;
 
 #endif // _GLOBAL_H_

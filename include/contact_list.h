@@ -37,7 +37,7 @@ void contactListDestroy( ContactList *list );
 
 void contactListInsert( ContactList *list, ContactNode *node );
 
-ContactNode *contactListPopFront( ContactList *list );
+ContactNode *contactListPopFront( ContactList *list, int lock );
 
 
 /* As funções de busca devem ser usadas com cuidado, já que podem levar 

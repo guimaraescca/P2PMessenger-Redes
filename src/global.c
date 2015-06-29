@@ -13,4 +13,5 @@ pthread_rwlock_t socketSetSync;
 ContactList *contacts = NULL;
 ContactList *pendingAccept = NULL;
 
-GenericDeque *pendingRead = NULL;
+int pendingRead = 0;
+pthread_rwlock_t pendingReadSync;

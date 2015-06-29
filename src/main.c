@@ -54,7 +54,8 @@ void *reader( void *p )
         total += partial;
     }
     dequePushBack( node->messages, nodeCreate( buffer, bufferSize ) );
-    dequePushBack( pendingRead, nodeCreate( (void *)&node->id, sizeof( node->id ) ) );
+
+    pthread_exit(0);
 }
 
 //=================== SELECTER THREAD ==========================================
@@ -90,10 +91,14 @@ void *selecter( void *p )
             }
 
             pthread_rwlock_unlock( &contacts->sync );
-            pthread_rwlock_unlock( &socketSetSync );
+            pthread_rwlock_unlock( &socketSetSync );    
 
             for ( i = 0; i < result; ++i )
                 pthread_join( ID[i], NULL );
+
+            pthread_rwlock_wrlock( &pendingReadSync );
+            pendingRead = 1;
+            pthread_rwlock_unlock( &pendingReadSync );
         }
         else if ( result == -1 )
         {
@@ -123,8 +128,10 @@ void *accepter( void *p )
 
     while ( 1 )
     {
+        length = sizeof(struct sockaddr_in);
+        
         // Aceita a conexão pendente.
-        if ( (clientSocket = accept( serverSocket, (void *)&addr, &length )) == -1 )
+        if ( (clientSocket = accept( serverSocket, (struct sockaddr*)&addr, &length )) == -1 )
         {
             perror( "Erro ao obter socket para o cliente" );
             return (void *)-1;
@@ -193,6 +200,7 @@ int createServer()
         perror( "Erro em listen" );
         return -1;
     }
+    return 0;
 }
 
 //==============================================================================
@@ -213,6 +221,11 @@ int main()
         perror( "Erro ao inicializar socketSetSync" );
         return -1;
     }
+    if ( pthread_rwlock_init( &pendingReadSync, NULL ) != 0 )
+    {
+        perror( "Erro ao inicializar pendingReadSync" );
+        return -1;
+    }
 
     // Inicialização das listas.
     contacts = contactListCreate();
@@ -227,13 +240,8 @@ int main()
         fprintf( stderr, "Erro ao criar lista de contatos a adicionar.\n" );
         return -1;
     }
-    pendingRead = dequeCreate();
-    if ( pendingRead == NULL )
-    {
-        fprintf( stderr, "Erro ao criar lista de IDs com mensagens não lidas.\n" );
-        return -1;
-    }
 
+    alertMenu(" ");
     // Criação do servidor.
     if ( createServer() == -1 )
         return -1;
@@ -243,6 +251,7 @@ int main()
     threadID[THREAD_SELECTER] = pthread_create( &threads[THREAD_SELECTER], NULL, selecter, NULL);
 
     // Chamada da interface principal.
+    alertMenu(" ");
     menu();
     
     // Destruição das estruturas alocadas.
@@ -251,14 +260,17 @@ int main()
 
     if ( pendingAccept != NULL )
         contactListDestroy( pendingAccept );
-        
-    if ( pendingRead != NULL )
-        dequeDestroy( pendingRead );
 
     if ( pthread_rwlock_destroy( &socketSetSync ) != 0 )
     {
-        perror( "Erro ao destruir trava de leitura e escrita" );
+        perror( "Erro ao destruir trava socketSetSync" );
+        return -1;
+    }
+    if ( pthread_rwlock_destroy( &pendingReadSync ) != 0 )
+    {
+        perror( "Erro ao destruir trava pendingReadSync" );
         return -1;
     }
     close( serverSocket );
+    return 0;
 }
