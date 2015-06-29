@@ -8,7 +8,7 @@
 GenericNode *nodeCreate( void *item, size_t pItemSize )
 {
     assert( item != NULL );
-    
+
     GenericNode *newNode = (GenericNode *) malloc( sizeof( GenericNode ) );
 
     newNode->item = malloc( pItemSize );
@@ -44,20 +44,20 @@ GenericDeque *dequeCreate()
 void dequeDestroy( GenericDeque *deque )
 {
     GenericNode *current = deque->head, *next;
-    
+
     while ( current != NULL ) {
         next = current->next;
         nodeDestroy( current );
         current = next;
     }
-    
+
     free( deque );
 }
 
 void dequePushFront( GenericDeque *deque, GenericNode *newNode )
 {
-    pthread_rwlock_wrlock( &deque->sync );
-    
+    // pthread_rwlock_wrlock( &deque->sync );
+
     if( deque->head != NULL ) {
         deque->head->prev = newNode;
         newNode->next = deque->head;
@@ -67,33 +67,33 @@ void dequePushFront( GenericDeque *deque, GenericNode *newNode )
 
     deque->head = newNode;
     deque->size++;
-    
-    pthread_rwlock_unlock( &deque->sync );
+
+    // pthread_rwlock_unlock( &deque->sync );
 }
 
 void dequePushBack( GenericDeque *deque, GenericNode *newNode )
 {
-    pthread_rwlock_wrlock( &deque->sync );
-    
+    // pthread_rwlock_wrlock( &deque->sync );
+
     if( deque->tail != NULL ) {
         deque->tail->next = newNode;
         newNode->prev = deque->tail;
     }
     else
         deque->head = newNode;
-    
+
     deque->tail = newNode;
     deque->size++;
-    
-    pthread_rwlock_unlock( &deque->sync );
+
+    // pthread_rwlock_unlock( &deque->sync );
 }
 
 GenericNode *dequePopFront( GenericDeque *deque )
 {
-    pthread_rwlock_wrlock( &deque->sync );
+    // pthread_rwlock_wrlock( &deque->sync );
 
     GenericNode *removed = deque->head;
-    
+
     if ( removed != NULL ) {
         if ( deque->head == deque->tail )
             deque->tail = NULL;
@@ -103,17 +103,17 @@ GenericNode *dequePopFront( GenericDeque *deque )
         deque->size--;
     }
 
-    pthread_rwlock_unlock( &deque->sync );
-    
+    // pthread_rwlock_unlock( &deque->sync );
+
     return removed;
 }
 
 GenericNode *dequePopBack( GenericDeque *deque )
 {
-    pthread_rwlock_wrlock( &deque->sync );
+    // pthread_rwlock_wrlock( &deque->sync );
 
     GenericNode *removed = deque->tail;
-    
+
     if ( removed != NULL ) {
         if ( deque->tail == deque->head )
             deque->head = NULL;
@@ -123,15 +123,15 @@ GenericNode *dequePopBack( GenericDeque *deque )
         deque->size--;
     }
 
-    pthread_rwlock_unlock( &deque->sync );
-    
+    // pthread_rwlock_unlock( &deque->sync );
+
     return removed;
 }
 
 GenericNode *dequeRemove( GenericDeque *deque, GenericNode *node )
 {
-    pthread_rwlock_wrlock( &deque->sync );
-    
+    // pthread_rwlock_wrlock( &deque->sync );
+
     if ( node->next != NULL )
         node->next->prev = node->prev;
     else {
@@ -144,11 +144,11 @@ GenericNode *dequeRemove( GenericDeque *deque, GenericNode *node )
         deque->head = node->next;
         deque->head->prev = NULL;
     }
-    
+
     node->next = node->prev = NULL;
     deque->size--;
 
-    pthread_rwlock_unlock( &deque->sync );
+    // pthread_rwlock_unlock( &deque->sync );
 
     return node;
 }
