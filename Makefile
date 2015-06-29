@@ -1,4 +1,4 @@
-CC = gcc
+CC = g++
 CFLAGS = -Og -pipe -g
 #CFLAGS = -g -Wall
 
