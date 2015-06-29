@@ -5,7 +5,7 @@
 int serverSocket;
 int threadID[THREAD_NUM];
 
-char *serverName = NULL;
+string serverName;
 
 fd_set socketSet;
 pthread_rwlock_t socketSetSync;

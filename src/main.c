@@ -18,7 +18,12 @@
 #include <contact_list.h>
 #include <global.h>
 
+#include <string>
+#include <iostream>
+
 #include <interface.h>
+
+using namespace std;
 
 //==============================================================================
 //=================== THREADS FUNCTIONS ========================================
@@ -40,12 +45,11 @@ void *reader( void *p )
         }
         total += partial;
     }
-    char buffer[size];
-    bufferSize = sizeof( char ) * size;
+    char buffer[size/sizeof(char)];
     total = 0;
-    while ( total < bufferSize )
+    while ( total < size )
     {
-        partial = recv( node->socket, (void *)(buffer + total), bufferSize - total, 0 );
+        partial = recv( node->socket, (void *)(buffer + total), size - total, 0 );
         if ( partial == -1 )
         {
             perror( "Erro na leitura do socket" );
@@ -53,7 +57,7 @@ void *reader( void *p )
         }
         total += partial;
     }
-    dequePushBack( node->messages, nodeCreate( buffer, bufferSize ) );
+    dequePushBack( node->messages, nodeCreate( buffer, size ) );
 
     pthread_exit(0);
 }
@@ -73,7 +77,7 @@ void *selecter( void *p )
         result = select( FD_SETSIZE, &socketSet, NULL, NULL, &timeout );
 
         pthread_rwlock_rdlock( &contacts->sync );
-        
+
         if ( result > 0 ) // Se algum socket recebeu dados.
         {
             ContactNode *current = contacts->first;
@@ -91,26 +95,22 @@ void *selecter( void *p )
             }
 
             pthread_rwlock_unlock( &contacts->sync );
-            pthread_rwlock_unlock( &socketSetSync );    
+            pthread_rwlock_unlock( &socketSetSync );
 
             for ( i = 0; i < result; ++i )
                 pthread_join( ID[i], NULL );
 
             pthread_rwlock_wrlock( &pendingReadSync );
-            pendingRead = 1;
+            pendingRead = 2;
             pthread_rwlock_unlock( &pendingReadSync );
         }
-        else if ( result == -1 )
-        {
-            perror( "Erro em select" );
+        else {
             pthread_rwlock_unlock( &contacts->sync );
             pthread_rwlock_unlock( &socketSetSync );
-            return (void *)-1;
-        }
-        else
-        {
-            pthread_rwlock_unlock( &contacts->sync );
-            pthread_rwlock_unlock( &socketSetSync );
+            if ( result == -1 ){
+                perror( "Erro em select" );
+                return (void *)-1;
+            }
         }
     } while(1);
 }
@@ -129,7 +129,7 @@ void *accepter( void *p )
     while ( 1 )
     {
         length = sizeof(struct sockaddr_in);
-        
+
         // Aceita a conexão pendente.
         if ( (clientSocket = accept( serverSocket, (struct sockaddr*)&addr, &length )) == -1 )
         {
@@ -149,8 +149,8 @@ void *accepter( void *p )
             total += partial;
         }
         total = 0;
+        cout << "Nome recebido: " << name << endl;
         // Recebe o nome local.
-        nameSize *= sizeof( char );
         while ( total < nameSize )
         {
             partial = recv( clientSocket, (void *)(name + total), nameSize - total, 0 );
@@ -161,18 +161,17 @@ void *accepter( void *p )
             }
             total += partial;
         }
-        contactListInsert( pendingAccept, contactNodeCreate( clientSocket, name ) );
+        contactListInsert( pendingAccept, contactNodeCreate( clientSocket, string(name) ) );
     }
 
 }
 
 int createServer()
 {
-    serverName = (char *) malloc( sizeof(char) * 81 );
     // Ler nome do usuário local.
-    printf( "Digite um nome de usuário, de até 80 caracteres:\n" );
-    scanf( "%80s", serverName );
-    
+    cout <<  "Digite um nome de usuário, de até 80 caracteres:" << endl ;
+    getline( cin, serverName );
+
     // Abertura do socket.
     serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
     if ( serverSocket == -1 )
@@ -211,7 +210,7 @@ int main()
 {
     // Definir mensagens na linguagem do sistema.
     setlocale( LC_ALL, "" );
-    
+
     pthread_t threads[THREAD_NUM];
 
     // Inicialização do conjunto de sockets e do mutex para sincronizá-lo.
@@ -241,7 +240,6 @@ int main()
         return -1;
     }
 
-    alertMenu(" ");
     // Criação do servidor.
     if ( createServer() == -1 )
         return -1;
@@ -253,7 +251,7 @@ int main()
     // Chamada da interface principal.
     alertMenu(" ");
     menu();
-    
+
     // Destruição das estruturas alocadas.
     if ( contacts != NULL )
         contactListDestroy( contacts );

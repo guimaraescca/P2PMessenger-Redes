@@ -14,17 +14,17 @@
 #include <unistd.h>
 
 #include <string>
+#include <iostream>
 
 int idSeed = 1;
 
-ContactNode *contactNodeCreate( int pSocket, const char *pName )
+ContactNode *contactNodeCreate( int pSocket, string pName )
 {
     ContactNode *newNode = (ContactNode *) malloc( sizeof(ContactNode) );
 
     newNode->messages = dequeCreate();
     newNode->socket = pSocket;
-    newNode->name = (char *) malloc( sizeof( char ) * strlen( pName ) + 1 );
-    strcpy( newNode->name, pName );
+    newNode->name = pName;
     newNode->prev = newNode->next = NULL;
     newNode->id = idSeed;
     idSeed++;
@@ -36,7 +36,6 @@ void contactNodeDestroy( ContactNode *node )
 {
     close( node->socket );
     dequeDestroy( node->messages );
-    free( node->name );
     free( node );
 }
 
@@ -44,7 +43,7 @@ int contactNodePrint( ContactNode *node )
 {
     socklen_t len;
     struct sockaddr_in addr;
-    char ipstr[INET_ADDRSTRLEN];
+    char ipstr[INET_ADDRSTRLEN + 1];
 
     if ( getpeername( node->socket, (struct sockaddr *)&addr, &len ) != 0 )
     {
@@ -54,10 +53,10 @@ int contactNodePrint( ContactNode *node )
 
     inet_ntop( AF_INET, &addr.sin_addr, ipstr, sizeof( ipstr ) );
 
-    printf( "ID: %d - Nome: %s\nIP: %s\n", node->id, node->name, ipstr );
+    cout << "ID: " << node->id << " - Nome: " << node->name << "\nIP: " << ipstr << "\n";
     pthread_rwlock_rdlock( &node->messages->sync );
     if ( node->messages->size > 0 )
-        printf( "%zu mensagens não lidas.", node->messages->size );
+        cout << node->messages->size << " mensagens não lidas." << endl;
     pthread_rwlock_unlock( &node->messages->sync );
 
     return -1;
@@ -88,7 +87,7 @@ void contactListDestroy( ContactList *list )
         contactNodeDestroy( current );
         current = next;
     }
-    
+
     pthread_rwlock_destroy( &list->sync );
 
     free( list );
@@ -113,7 +112,7 @@ ContactNode *contactListPopFront( ContactList *list, int lock )
 {
     if ( lock != 0 )
         pthread_rwlock_wrlock( &list->sync );
-    
+
     ContactNode *front = list->first;
 
     if ( front != NULL )
@@ -149,7 +148,7 @@ ContactNode *contactListSearch( ContactList *list, const char *key )
 {
     ContactNode *current = list->first;
 
-    while ( current != NULL && (strcmp( key, current->name ) != 0) )
+    while ( current != NULL && current->name != key )
         current = current->next;
 
     return current;

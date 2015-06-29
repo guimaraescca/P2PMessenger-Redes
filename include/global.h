@@ -5,6 +5,8 @@
 #include <contact_list.h>
 #include <sys/select.h>
 
+#include <string>
+
 #define SERVER_PORT 28086
 #define messageSize 2000
 
@@ -18,7 +20,7 @@ enum threadNames
 extern int serverSocket;
 extern int threadID[THREAD_NUM];
 
-extern char *serverName;
+extern string serverName;
 
 extern fd_set socketSet;
 extern pthread_rwlock_t socketSetSync;

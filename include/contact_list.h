@@ -1,12 +1,15 @@
 #include <pthread.h>
+#include <string>
 #include <generic_deque.h>
 
 #ifndef _CONTACT_LIST_H_
 #define _CONTACT_LIST_H_
 
+using namespace std;
+
 typedef struct contactNode
 {
-    char *name;
+    string name;
     int socket;
     int id;
 
@@ -23,7 +26,7 @@ typedef struct contactList
     pthread_rwlock_t sync;
 } ContactList;
 
-ContactNode *contactNodeCreate( int pSocket, const char *pName );
+ContactNode *contactNodeCreate( int pSocket, string pName );
 
 void contactNodeDestroy( ContactNode *node );
 
@@ -37,8 +40,7 @@ void contactListInsert( ContactList *list, ContactNode *node );
 
 ContactNode *contactListPopFront( ContactList *list, int lock );
 
-
-/* As funções de busca devem ser usadas com cuidado, já que podem levar 
+/* As funções de busca devem ser usadas com cuidado, já que podem levar
 * a condições de disputa ou impasses.
 */
 void contactListRemove( ContactList *list, ContactNode *node );
