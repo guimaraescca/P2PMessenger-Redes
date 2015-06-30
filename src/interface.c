@@ -162,10 +162,6 @@ void listContact()
         } while( current != NULL );
     }
     // pthread_rwlock_unlock( &contacts->sync );
-
-    // pthread_rwlock_wrlock( &pendingReadSync );
-    pendingRead = 0;
-    // pthread_rwlock_unlock( &pendingReadSync );
 }
 
 void messageMenu(){
@@ -221,6 +217,7 @@ void sendMessage(){
         getline(cin, buffer);
 
         sendResult = send( receiver->socket, buffer.c_str(), (buffer.size() + 1) * sizeof(char), 0 );
+        cout << "Bytes a enviar: " <<  sendResult << endl;
 
         if(sendResult == -1){
             alertMenu("Falha no envio!");
@@ -329,9 +326,9 @@ void menu(){
         cout << "=============================================\n\t[ Menu ] - Bem vindo(a) " << serverName << "\n=============================================\n\n";
 
         // pthread_rwlock_wrlock( &pendingReadSync );
-        if ( pendingRead == 2 ) {
+        if ( pendingRead == 1 ) {
             cout << ( "Aviso! Há novas mensagens não lidas!\n\n" );
-            pendingRead = 1;
+            pendingRead = 0;
         }
         // pthread_rwlock_unlock( &pendingReadSync );
 
@@ -341,10 +338,7 @@ void menu(){
         cout << ("[4] - Enviar mensagem.\n");
         cout << ("[5] - Enviar mensagem em grupo.\n");
 
-        // pthread_rwlock_rdlock( &pendingReadSync );
-        if ( pendingRead > 0 )
-            cout << ("[6] - Ler mensagens.\n");
-        // pthread_rwlock_unlock( &pendingReadSync );
+        cout << ("[6] - Ler mensagens.\n");
 
         // pthread_rwlock_rdlock( &pendingAccept->sync );
         if ( pendingAccept->size > 0 ){

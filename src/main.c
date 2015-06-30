@@ -81,7 +81,7 @@ void *selecter( void *p )
 
         if ( result > 0 ) // Se algum socket recebeu dados.
         {
-            cout << "SELECTER: leitura detectada" << endl;
+            cout << "SELECTER: leitura detectada " << endl;
             ContactNode *current = contacts->first;
             pthread_t threads[result];
             int i = result - 1, ID[result];
@@ -100,12 +100,14 @@ void *selecter( void *p )
             // pthread_rwlock_unlock( &contacts->sync );
             // pthread_rwlock_unlock( &socketSetSync );
 
+            // pthread_rwlock_wrlock( &pendingReadSync );
+            pendingRead = 1;
+            // pthread_rwlock_unlock( &pendingReadSync );
+
             for ( i = 0; i < result; ++i )
+            
                 pthread_join( ID[i], &threadReturn[i] );
 
-            // pthread_rwlock_wrlock( &pendingReadSync );
-            pendingRead = 2;
-            // pthread_rwlock_unlock( &pendingReadSync );
         }
         else {
             // pthread_rwlock_unlock( &contacts->sync );
