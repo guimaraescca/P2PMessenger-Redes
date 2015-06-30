@@ -23,12 +23,10 @@ extern int threadID[THREAD_NUM];
 extern string serverName;
 
 extern fd_set socketSet;
-extern pthread_rwlock_t socketSetSync;
 
 extern ContactList *contacts;
 extern ContactList *pendingAccept;
 
 extern int pendingRead;
-extern pthread_rwlock_t pendingReadSync;
 
 #endif // _GLOBAL_H_

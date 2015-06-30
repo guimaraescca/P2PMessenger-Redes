@@ -55,10 +55,8 @@ int contactNodePrint( ContactNode *node )
     inet_ntop( AF_INET, &addr.sin_addr, ipstr, sizeof( ipstr ) );
 
     cout << "ID: " << node->id << " - Nome: " << node->name << "\nIP: " << ipstr << "\n";
-    // pthread_rwlock_rdlock( &node->messages->sync );
     if ( node->messages->size > 0 )
         cout << node->messages->size << " mensagens não lidas." << endl;
-    // pthread_rwlock_unlock( &node->messages->sync );
 
     return -1;
 }

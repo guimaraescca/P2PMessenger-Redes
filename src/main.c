@@ -60,13 +60,10 @@ void *selecter( void *p )
 
     do
     {
-        // timeout.tv_sec = 2; // Timeout a cada 2 segundos, para que o conjunto de sockets possa ser atualizado.
-        // timeout.tv_usec = 0;
+        timeout.tv_sec = 2; // Timeout a cada 2 segundos, para que o conjunto de sockets possa ser atualizado.
+        timeout.tv_usec = 0;
 
-        // pthread_rwlock_rdlock( &socketSetSync );
-        result = select( FD_SETSIZE, &socketSet, NULL, NULL, NULL );
-
-        // pthread_rwlock_rdlock( &contacts->sync );
+        result = select( FD_SETSIZE, &socketSet, NULL, NULL, &timeout );
 
         if ( result > 0 ) // Se algum socket recebeu dados.
         {
@@ -86,20 +83,13 @@ void *selecter( void *p )
                 current = current->next;
             }
 
-            // pthread_rwlock_unlock( &contacts->sync );
-            // pthread_rwlock_unlock( &socketSetSync );
-
-            // pthread_rwlock_wrlock( &pendingReadSync );
             pendingRead = 1;
-            // pthread_rwlock_unlock( &pendingReadSync );
 
             for ( i = 0; i < result; ++i )
                 pthread_join( ID[i], &threadReturn[i] );
 
         }
         else {
-            // pthread_rwlock_unlock( &contacts->sync );
-            // pthread_rwlock_unlock( &socketSetSync );
             if ( result == -1 ){
                 perror( "Erro em select" );
                 return (void *)-1;
@@ -135,9 +125,7 @@ void *accepter( void *p )
         name = (char *) malloc( nameSize );
         recv( clientSocket, (void *)name, nameSize, 0 );
 
-        // pthread_rwlock_wrlock( &pendingAccept->sync );
         contactListInsert( pendingAccept, contactNodeCreate( clientSocket, string(name) ) );
-        // pthread_rwlock_unlock( &pendingAccept->sync );
 
         free(name);
     }
@@ -193,16 +181,6 @@ int main()
 
     // Inicialização do conjunto de sockets e do mutex para sincronizá-lo.
     FD_ZERO( &socketSet );
-    if ( pthread_rwlock_init( &socketSetSync, NULL ) != 0 )
-    {
-        perror( "Erro ao inicializar socketSetSync" );
-        return -1;
-    }
-    if ( pthread_rwlock_init( &pendingReadSync, NULL ) != 0 )
-    {
-        perror( "Erro ao inicializar pendingReadSync" );
-        return -1;
-    }
 
     // Inicialização das listas.
     contacts = contactListCreate();
@@ -237,16 +215,6 @@ int main()
     if ( pendingAccept != NULL )
         contactListDestroy( pendingAccept );
 
-    if ( pthread_rwlock_destroy( &socketSetSync ) != 0 )
-    {
-        perror( "Erro ao destruir trava socketSetSync" );
-        return -1;
-    }
-    if ( pthread_rwlock_destroy( &pendingReadSync ) != 0 )
-    {
-        perror( "Erro ao destruir trava pendingReadSync" );
-        return -1;
-    }
     close( serverSocket );
     return 0;
 }
