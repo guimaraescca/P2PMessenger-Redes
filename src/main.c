@@ -33,29 +33,18 @@ using namespace std;
 void *reader( void *p )
 {
     ContactNode *node = (ContactNode *)p;
-    ssize_t size, bufferSize, partial, total = 0;
+    ssize_t size, bufferSize, partial;
 
-    while ( total < sizeof( size ) )
+    if ( recv( node->socket, (void *)&size, sizeof( size ), 0 ) == -1 )
     {
-        partial = recv( node->socket, (void *)(&size + total), sizeof( size ) - total, 0 );
-        if ( partial == -1 )
-        {
-            perror( "Erro na leitura do socket" );
-            return (void *)-1;
-        }
-        total += partial;
+        perror( "Erro na leitura do socket" );
+        return (void *)-1;
     }
     char buffer[size/sizeof(char)];
-    total = 0;
-    while ( total < size )
+    if ( recv( node->socket, (void *)buffer, size, 0 ) == -1 )
     {
-        partial = recv( node->socket, (void *)(buffer + total), size - total, 0 );
-        if ( partial == -1 )
-        {
-            perror( "Erro na leitura do socket" );
-            return (void *)-1;
-        }
-        total += partial;
+        perror( "Erro na leitura do socket" );
+        return (void *)-1;
     }
     cout << "Mensagem recebida: " << buffer << endl;
     dequePushBack( node->messages, nodeCreate( buffer, size ) );
@@ -71,11 +60,11 @@ void *selecter( void *p )
 
     do
     {
-        timeout.tv_sec = 2; // Timeout a cada 2 segundos, para que o conjunto de sockets possa ser atualizado.
-        timeout.tv_usec = 0;
+        // timeout.tv_sec = 2; // Timeout a cada 2 segundos, para que o conjunto de sockets possa ser atualizado.
+        // timeout.tv_usec = 0;
 
         // pthread_rwlock_rdlock( &socketSetSync );
-        result = select( FD_SETSIZE, &socketSet, NULL, NULL, &timeout );
+        result = select( FD_SETSIZE, &socketSet, NULL, NULL, NULL );
 
         // pthread_rwlock_rdlock( &contacts->sync );
 
@@ -105,7 +94,6 @@ void *selecter( void *p )
             // pthread_rwlock_unlock( &pendingReadSync );
 
             for ( i = 0; i < result; ++i )
-
                 pthread_join( ID[i], &threadReturn[i] );
 
         }
