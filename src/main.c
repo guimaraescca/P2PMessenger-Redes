@@ -83,6 +83,7 @@ void *selecter( void *p )
             ContactNode *current = contacts->first;
             pthread_t threads[result];
             int i = result - 1, ID[result];
+            void *threadReturn[result];
 
             while ( current != NULL )
             {
@@ -98,7 +99,7 @@ void *selecter( void *p )
             // pthread_rwlock_unlock( &socketSetSync );
 
             for ( i = 0; i < result; ++i )
-                pthread_join( ID[i], NULL );
+                pthread_join( ID[i], &threadReturn[i] );
 
             // pthread_rwlock_wrlock( &pendingReadSync );
             pendingRead = 2;

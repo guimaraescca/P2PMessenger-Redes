@@ -170,7 +170,7 @@ void listContact()
 
 void messageMenu(){
 
-    int contactId;
+    string contactId;
     ContactNode* sender;        //De quem se deseja ler as mensagens
     GenericNode* messageNode;   //Mensagem que será lida.
 
@@ -178,7 +178,7 @@ void messageMenu(){
     cin >> contactId;
 
     // pthread_rwlock_wrlock( &contacts->sync );
-    sender = contactListSearchId(contacts, contactId);
+    sender = contactListSearchId( contacts, stoi(contactId) );
 
     if( sender == NULL ) {
         // pthread_rwlock_unlock( &contacts->sync );
@@ -249,32 +249,31 @@ void sendMessage(){
 void broadcastMessage(){
 
     int receiverId;
-    size_t bufferSize;
     string buffer;
     string message;
     ContactNode *receiver;
 
     cout << "Digite a mensagem:\n";
+    cin.ignore( 1 );
     getline( cin, message );
 
-    cout << "\nInsira os IDs dos contatos para quem deseja enviar a mensagem seguidos de <ENTER>.\n"
-          << "Ex: 105 201 110\n";
-    getline( cin, buffer );
-    stringstream idList( buffer );
+    cout << "\nInsira o ID do próximo contato para quem deseja enviar a mensagem seguido de <ENTER> ou * para sair.\n";
+    cin >> buffer;
 
-    idList >> receiverId;
     // pthread_rwlock_rdlock( &contacts->sync );
-    if ( !idList ) { // Se não houve erro.
+    if ( buffer[0] != '*' ) { // Se não houve erro.
         do {
+            receiverId = stoi(buffer);
             //Pesquisa do ID dentro da lista e envio da mensagem.
             receiver = contactListSearchId(contacts, receiverId);
             if(receiver == NULL){
                 fprintf( stderr, "ID inválido: %d\n", receiverId );
-            }else{
-                send( receiver->socket, message.c_str(), (message.size() + 1) * sizeof(char), 0 );
-                idList >> receiverId;
             }
-        } while( !idList );
+            else
+                send( receiver->socket, message.c_str(), (message.size() + 1) * sizeof(char), 0 );
+            cout << "\nInsira o ID do próximo contato para quem deseja enviar a mensagem seguido de <ENTER> ou * para sair.\n";
+            cin >> buffer;
+        } while( buffer[0] != '*' );
     }
     // pthread_rwlock_unlock( &contacts->sync );
 
@@ -322,7 +321,8 @@ void acceptContact() {
 //=================== MAIN MENU ================================================
 void menu(){
 
-    int input, alerts;
+    int alerts;
+    string input;
 
     do{
         alerts = 0;
@@ -342,7 +342,7 @@ void menu(){
         cout << ("[5] - Enviar mensagem em grupo.\n");
 
         // pthread_rwlock_rdlock( &pendingReadSync );
-        if ( pendingRead == 1 )
+        if ( pendingRead > 0 )
             cout << ("[6] - Ler mensagens.\n");
         // pthread_rwlock_unlock( &pendingReadSync );
 
@@ -358,32 +358,32 @@ void menu(){
 
         cin >> input;
 
-        switch(input) {
-          	case 1:
+        switch(input[0]) {
+          	case '1':
           	   alertMenu("> Adicionar contato");
         	    addContact();
       		    break;
-      	    case 2:
+      	    case '2':
       	        alertMenu("> Listar contatos");
         		listContact();
         		break;
-          	case 3:
+          	case '3':
           	    alertMenu("> Deletar contato");
         		deleteContact();
         		break;
-            case 4:
+            case '4':
                 alertMenu("> Envio de mensagem");
                 sendMessage();
       		    break;
-            case 5:
+            case '5':
                 alertMenu("> Envio de mensagem em grupo");
                 broadcastMessage();
       		    break;
-      		case 6:
+      		case '6':
                 alertMenu("> Leitura de mensagens");
       		    messageMenu();
       		    break;
-            case 7:
+            case '7':
                 if ( alerts == 0 )
                     alertMenu("Opção inválida! Tente novamente.");
                 else {
@@ -391,11 +391,11 @@ void menu(){
                     acceptContact();
                 }
       		    break;
-            case 0:
+            case '0':
                 break;
       	    default:
                 alertMenu("Opção inválida! Tente novamente.");
         	    break;
       	}
-    }while(input != 0);
+    }while(input[0] != '0');
 }

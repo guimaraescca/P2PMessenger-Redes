@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Og -pipe -g
+CFLAGS = -Og -pipe -g -std=c++11
 #CFLAGS = -g -Wall
 
 INCLUDE = -Iinclude/ -isystem/usr/include/
