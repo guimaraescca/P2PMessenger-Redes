@@ -28,6 +28,42 @@ void alertMenu(const char* alert){
     cout << "\n" << alert << "\n\n";
 }
 
+//=================== READING THREAD ===========================================
+void *reader( void *p )
+{
+    ContactNode *node = (ContactNode *)p;
+    ssize_t size, bufferSize, partial, total;
+    cout << "Reading for " << node->name << endl;
+    while ( 1 ) {
+        total = 0;
+        while ( total < sizeof( size ) )
+        {
+            partial = recv( node->socket, (void *)(&size + total), sizeof( size ) - total, 0 );
+            if ( partial == -1 )
+            {
+                perror( "Erro na leitura do socket" );
+                return (void *)-1;
+            }
+            total += partial;
+        }
+        char buffer[size/sizeof(char)];
+        total = 0;
+        while ( total < size )
+        {
+            partial = recv( node->socket, (void *)(buffer + total), size - total, 0 );
+            if ( partial == -1 )
+            {
+                perror( "Erro na leitura do socket" );
+                return (void *)-1;
+            }
+            total += partial;
+        }
+        cout << "Mensagem recebida: " << buffer << endl;
+        dequePushBack( node->messages, nodeCreate( buffer, size ) );
+    }
+    pthread_exit(0);
+}
+
 //=================== ADD CONTACT ==============================================
 int addContact()
 {
@@ -111,7 +147,11 @@ int addContact()
     FD_SET( socketDescriptor, &socketSet );
     // pthread_rwlock_unlock( &socketSetSync );
 
-    contactListInsert( contacts, contactNodeCreate( socketDescriptor, buffer ) );
+    ContactNode *newNode = contactNodeCreate( socketDescriptor, buffer );
+    contactListInsert( contacts, newNode );
+
+    pthread_t readThread;
+    pthread_create( &readThread, NULL, reader, (void *)newNode);
 
     alertMenu( "Contato adicionado com sucesso." );
 

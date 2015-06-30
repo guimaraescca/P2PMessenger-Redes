@@ -29,40 +29,6 @@ using namespace std;
 //=================== THREADS FUNCTIONS ========================================
 //==============================================================================
 
-//=================== READING THREAD ===========================================
-void *reader( void *p )
-{
-    ContactNode *node = (ContactNode *)p;
-    ssize_t size, bufferSize, partial, total = 0;
-
-    while ( total < sizeof( size ) )
-    {
-        partial = recv( node->socket, (void *)(&size + total), sizeof( size ) - total, 0 );
-        if ( partial == -1 )
-        {
-            perror( "Erro na leitura do socket" );
-            return (void *)-1;
-        }
-        total += partial;
-    }
-    char buffer[size/sizeof(char)];
-    total = 0;
-    while ( total < size )
-    {
-        partial = recv( node->socket, (void *)(buffer + total), size - total, 0 );
-        if ( partial == -1 )
-        {
-            perror( "Erro na leitura do socket" );
-            return (void *)-1;
-        }
-        total += partial;
-    }
-    cout << "Mensagem recebida: " << buffer << endl;
-    dequePushBack( node->messages, nodeCreate( buffer, size ) );
-
-    pthread_exit(0);
-}
-
 //=================== SELECTER THREAD ==========================================
 void *selecter( void *p )
 {
@@ -91,7 +57,7 @@ void *selecter( void *p )
             {
                 if ( FD_ISSET( current->socket, &socketSet ) != 0 )
                 {
-                    ID[i] = pthread_create( &threads[i], NULL, reader, (void *)current);
+                    // ID[i] = pthread_create( &threads[i], NULL, reader, (void *)current);
                     --i;
                 }
                 current = current->next;
@@ -105,7 +71,7 @@ void *selecter( void *p )
             // pthread_rwlock_unlock( &pendingReadSync );
 
             for ( i = 0; i < result; ++i )
-            
+
                 pthread_join( ID[i], &threadReturn[i] );
 
         }
@@ -236,7 +202,7 @@ int main()
 
     // Inicialização das threads.
     threadID[THREAD_ACCEPTER] = pthread_create( &threads[THREAD_ACCEPTER], NULL, accepter, NULL);
-    threadID[THREAD_SELECTER] = pthread_create( &threads[THREAD_SELECTER], NULL, selecter, NULL);
+    // threadID[THREAD_SELECTER] = pthread_create( &threads[THREAD_SELECTER], NULL, selecter, NULL);
 
     // Chamada da interface principal.
     alertMenu(" ");
