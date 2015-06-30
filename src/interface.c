@@ -203,7 +203,6 @@ void messageMenu(){
 void sendMessage(){
 
     int sendResult;
-    size_t bufferSize = 81;
     string buffer;
     ContactNode* receiver;
 

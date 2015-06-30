@@ -42,8 +42,8 @@ void contactNodeDestroy( ContactNode *node )
 
 int contactNodePrint( ContactNode *node )
 {
-    socklen_t len;
     struct sockaddr_in addr;
+    socklen_t len = sizeof( struct sockaddr_in );
     char ipstr[INET_ADDRSTRLEN + 1];
 
     if ( getpeername( node->socket, (struct sockaddr *)&addr, &len ) != 0 )
