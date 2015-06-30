@@ -372,22 +372,22 @@ void menu(){
         }
         // pthread_rwlock_unlock( &pendingReadSync );
 
-        cout << ("[1] - Adicionar contato.\n");
-        cout << ("[2] - Listar contatos.\n");
-        cout << ("[3] - Deletar contato.\n");
-        cout << ("[4] - Enviar mensagem.\n");
-        cout << ("[5] - Enviar mensagem em grupo.\n");
+        cout << ("\t[1] - Adicionar contato.\n");
+        cout << ("\t[2] - Listar contatos.\n");
+        cout << ("\t[3] - Deletar contato.\n");
+        cout << ("\t[4] - Enviar mensagem.\n");
+        cout << ("\t[5] - Enviar mensagem em grupo.\n");
 
-        cout << ("[6] - Ler mensagens.\n");
+        cout << ("\t[6] - Ler mensagens.\n");
 
         // pthread_rwlock_rdlock( &pendingAccept->sync );
         if ( pendingAccept->size > 0 ){
             alerts = 1;
-            cout << ("[7] - Adições pendentes.\n");
+            cout << ("\t[7] - Adições pendentes.\n");
         }
         // pthread_rwlock_unlock( &pendingAccept->sync );
 
-        cout << ("[0] - Fechar programa.\n\n=============================================\n");
+        cout << ("\t[0] - Fechar programa.\n\n=============================================\n");
         cout << ("~$ ");
 
         cin >> input;
