@@ -217,7 +217,8 @@ void sendMessage(){
         alertMenu( "Não há contato com esse nome na sua lista de contatos!" );
     }else{
         cout << "Digite sua mensagem:\n";
-        cin >> buffer;
+        cin.ignore(1);
+        getline(cin, buffer);
 
         sendResult = send( receiver->socket, buffer.c_str(), (buffer.size() + 1) * sizeof(char), 0 );
 

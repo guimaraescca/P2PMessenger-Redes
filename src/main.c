@@ -57,6 +57,7 @@ void *reader( void *p )
         }
         total += partial;
     }
+    cout << "Mensagem recebida: " << buffer << endl;
     dequePushBack( node->messages, nodeCreate( buffer, size ) );
 
     pthread_exit(0);
@@ -80,6 +81,7 @@ void *selecter( void *p )
 
         if ( result > 0 ) // Se algum socket recebeu dados.
         {
+            cout << "SELECTER: leitura detectada" << endl;
             ContactNode *current = contacts->first;
             pthread_t threads[result];
             int i = result - 1, ID[result];
@@ -142,7 +144,6 @@ void *accepter( void *p )
         recv( clientSocket, (void *)&nameSize, sizeof( nameSize ), 0 );
         name = (char *) malloc( nameSize );
         recv( clientSocket, (void *)name, nameSize, 0 );
-        cout << "Nome recebido: " << name << endl;
 
         // pthread_rwlock_wrlock( &pendingAccept->sync );
         contactListInsert( pendingAccept, contactNodeCreate( clientSocket, string(name) ) );
